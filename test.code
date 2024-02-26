@@ -1,0 +1,9 @@
+struct vec2 test()
+{
+  struct vec2 v;
+  v.x = 3;
+  v.y = 4;
+  return v;
+}
+
+test().x;
