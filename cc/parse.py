@@ -24,11 +24,32 @@ class Parse:
     name = self.lex.expect("Identifier")
     
     self.lex.expect('(')
+    param = self.param(self.scope)
     self.lex.expect(')')
     
     body = self.expect(self.compound_statement(), "compound-statement")
     
     return body
+  
+  def param(self, scope):
+    param = []
+    
+    var = self.var(scope)
+    
+    if not var:
+      return param
+    
+    param.append(var)
+    
+    while self.lex.accept(','):
+      var = self.expect(self.var(scope), "parameter-declaration")
+      param.append(var)
+    
+    for put_var in reversed(param):
+      if not scope.insert_param(put_var):
+        raise TokenError(self.lex.token, f"redefinition of '{put_var.name}'")
+    
+    return param
   
   def compound_statement(self):
     if self.lex.accept('{'):
@@ -57,7 +78,10 @@ class Parse:
     if not var:
       return None
     
-    self.lex.expect(';');
+    if not scope.insert(var):
+      raise TokenError(self.lex.token, f"redefinition of '{var.name}'")
+    
+    self.lex.expect(';')
     
     return VarStatement(var)
   
@@ -83,9 +107,6 @@ class Parse:
       if specifier.name != "struct":
         raise TokenError(self.lex.token, f"declaration does not declare anything")
       return True
-    
-    if not scope.insert(var):
-      raise TokenError(name, f"redefinition of '{var.name}'")
     
     return var
   
@@ -141,7 +162,7 @@ class Parse:
         var = self.var(struct_scope)
         
         while var:
-          self.lex.expect(';');
+          self.lex.expect(';')
           struct_scope.insert(var)
           var = self.var(struct_scope)
         

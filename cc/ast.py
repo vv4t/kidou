@@ -3,6 +3,7 @@ import math
 class Scope:
   def __init__(self, name=""):
     self.size = 0
+    self.param_size = 0
     self.struct = {}
     self.var = {}
     self.name = name
@@ -18,6 +19,21 @@ class Scope:
       return None
     
     return self.struct[name]
+  
+  def insert_param(self, var):
+    if var.name in self.var:
+      return False
+    
+    size = sizeof(var.data_type)
+    align = min(size, 4)
+    
+    self.var[var.name] = var
+    self.param_size = math.ceil(self.param_size / align) * align
+    var.pos = -4 - self.param_size - size
+    self.param_size += size
+    
+    return True
+    
   
   def insert(self, var):
     if var.name in self.var:

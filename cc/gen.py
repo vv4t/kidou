@@ -4,15 +4,23 @@ class Gen:
   def __init__(self, parse):
     self.parse = parse
     
-    self.emit('main:')
+    self.emit('program:')
     
-    self.emit(f"enter {parse.scope.size // 4}")
-    self.emit("")
+    self.emit(f'enter {parse.scope.size // 4}')
     
     self.statement(parse.node)
     self.emit('int 2')
     
-    self.emit("leave")
+    self.emit('leave')
+    self.emit('ret')
+    
+    self.emit('main:')
+    self.emit('enter 1')
+    self.emit('const 5')
+    self.emit('const 6')
+    self.emit('const 7')
+    self.emit('call program')
+    self.emit('leave 1')
     self.emit('int 1')
   
   def statement(self, node):
@@ -20,7 +28,6 @@ class Gen:
       return
     elif isinstance(node, ExpressionStatement):
       self.expression(node.body)
-      self.emit("")
     elif isinstance(node, CompoundStatement):
       for statement in node.body:
         self.statement(statement)
@@ -94,7 +101,7 @@ class Gen:
   def name(self, node):
     self.emit("fp")
     
-    if node.var.pos > 0:
+    if node.var.pos != 0:
       self.emit(f"const {node.var.pos}")
       self.emit("add")
   
