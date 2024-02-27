@@ -80,6 +80,24 @@ void vm_exec(vm_t *vm)
       a = vm_pop(vm);
       vm_push(vm, a / b);
       break;
+    case VM_LW:
+      a = vm_pop(vm);
+      vm_push(vm, vm->stack[a / 4]);
+      break;
+    case VM_SW:
+      a = vm_pop(vm);
+      b = vm_pop(vm);
+      vm->stack[b / 4] = a;
+      break;
+    case VM_LB:
+      a = vm_pop(vm);
+      vm_push(vm, ((char*) vm->stack)[a]);
+      break;
+    case VM_SB:
+      a = vm_pop(vm);
+      b = vm_pop(vm);
+      ((char*) vm->stack)[b] = a & 0xff;
+      break;
     case VM_LOAD:
       a = vm_pop(vm);
       b = vm_next(vm);
@@ -197,8 +215,8 @@ void vm_exec(vm_t *vm)
       return;
     }
     
-    // printf(".%s\n", op_text(op));
-    // vm_info(vm);
+    printf(".%s\n", op_text(op));
+    vm_info(vm);
   }
 }
 
@@ -227,7 +245,7 @@ void vm_load(vm_t *vm, int a, int b)
 void vm_store(vm_t *vm, int a, int b)
 {
   for (int i = 0; i < b; i++) {
-    vm->stack[a + i] = vm->stack[vm->sp - b + 1 + i];
+    vm->stack[a + b - i - 1] = vm_pop(vm);
   }
 }
 
@@ -241,6 +259,10 @@ const char *op_text(op_t op)
     "sub",
     "mul",
     "div",
+    "lw",
+    "sw",
+    "lb",
+    "sb",
     "load",
     "store",
     "and",

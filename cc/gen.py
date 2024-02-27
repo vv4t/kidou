@@ -2,6 +2,9 @@ from parse import *
 
 class Gen:
   def __init__(self, parse):
+    self.parse = parse
+    
+    print(parse.node)
     self.emit('main:')
     
     self.emit(f"enter {parse.scope.size // 4}")
@@ -13,9 +16,10 @@ class Gen:
     self.emit('int 1')
   
   def statement(self, node):
-    if isinstance(node, BodyStatement):
-      if isinstance(node.body, Expression):
-        self.expression(node.body)
+    if isinstance(node, ExpressionStatement):
+      self.expression(node.body)
+    elif isinstance(node, VarStatement):
+      pass
     elif isinstance(node, CompoundStatement):
       for statement in node.body:
         self.statement(statement)
@@ -25,12 +29,15 @@ class Gen:
   def expression(self, node):
     if isinstance(node, ConstantNode):
       self.constant(node)
-    elif isinstance(node, IdentifierNode):
-      self.lvalue(node)
     elif isinstance(node, BinopNode):
       self.binop(node)
-    elif isinstance(node, Expression):
-      self.expression(node.body)
+    elif islvalue(node):
+      self.lvalue(node)
+  
+  def lvalue(self, node):
+    if isinstance(node, IdentifierNode):
+      var = self.parse.scope.find(node.name)
+      print(var.pos)
   
   def binop(self, node):
     self.expression(node.lhs)

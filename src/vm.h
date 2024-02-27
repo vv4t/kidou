@@ -14,6 +14,10 @@ typedef enum {
   VM_MUL,
   VM_DIV,
   
+  VM_LW,
+  VM_SW,
+  VM_LB,
+  VM_SB,
   VM_LOAD,
   VM_STORE,
   
