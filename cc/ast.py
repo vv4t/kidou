@@ -30,7 +30,8 @@ def valid_binop(a, op, b):
     (
       ['+', '-', '*', '/', '=' ],
       [
-        (DataType("int", None), DataType("int", None))
+        (data_type_cmp(a, DataType("int", None)), data_type_cmp(b, DataType("int", None))),
+        (ispointer(a), ispointer(b))
       ]
     )
   ]
@@ -38,13 +39,32 @@ def valid_binop(a, op, b):
   for cmp_op, cmp_list in cmp_table:
     if op in cmp_op:
       for x,y in cmp_list:
-        if data_type_cmp(a, x) and data_type_cmp(b, x):
+        if x and y:
           return True
   
   return False
 
 def islvalue(node):
-  return isinstance(node, NameNode)
+  return (
+    isinstance(node, NameNode) or
+    isinstance(node, IndexNode) or
+    (isinstance(node, UnaryNode) and node.op == '*')
+  )
+
+def ispointer(data_type):
+  return isinstance(data_type.declarator, Pointer)
+
+def isarray(data_type):
+  return isinstance(data_type.declarator, Array)
+
+def pointer_type(data_type):
+  return DataType(data_type.specifier, Pointer(data_type.declarator))
+
+def base_type(data_type):
+  if not data_type.declarator:
+    return data_type
+  else:
+    return DataType(data_type.specifier, data_type.declarator.base)
 
 def sizeof(data_type):
   specifier_size = { "int": 4, "char": 1 }
@@ -152,6 +172,24 @@ class BinopNode:
   
   def __repr__(self):
     return f'({self.lhs}) {self.op} ({self.rhs})'
+
+class UnaryNode:
+  def __init__(self, op, base, data_type):
+    self.op = op
+    self.base = base
+    self.data_type = data_type
+  
+  def __repr__(self):
+    return f'{self.op}{self.base}'
+
+class IndexNode:
+  def __init__(self, base, pos, data_type):
+    self.base = base
+    self.pos = pos
+    self.data_type = data_type
+  
+  def __repr__(self):
+    return f'{self.base}[{self.pos}]'
 
 class ConstantNode:
   def __init__(self, value, data_type):

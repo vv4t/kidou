@@ -28,12 +28,34 @@ class Gen:
       raise Exception("unknown")
   
   def expression(self, node):
-    if isinstance(node, ConstantNode):
+    if islvalue(node):
+      self.value(node)
+    elif isinstance(node, ConstantNode):
       self.constant(node)
     elif isinstance(node, BinopNode):
       self.binop(node)
-    elif islvalue(node):
-      self.value(node)
+    elif isinstance(node, UnaryNode):
+      self.unary(node)
+    else:
+      raise Exception("unknown")
+  
+  def unary(self, node):
+    if node.op == '&':
+      self.lvalue(node.base)
+    else:
+      raise Exception("unknown")
+  
+  def index(self, node):
+    self.lvalue(node.base)
+    self.expression(node.pos)
+    
+    size = sizeof(node.data_type)
+    
+    if size > 1:
+      self.emit(f"const {size}")
+      self.emit("mul")
+    
+    self.emit("add")
   
   def value(self, node):
     self.lvalue(node)
@@ -48,8 +70,14 @@ class Gen:
   def lvalue(self, node):
     if isinstance(node, NameNode):
       self.emit("fp")
-      self.emit(f"const {node.var.pos}")
-      self.emit("add")
+      
+      if node.var.pos > 0:
+        self.emit(f"const {node.var.pos}")
+        self.emit("add")
+    elif isinstance(node, IndexNode):
+      self.index(node)
+    elif isinstance(node, UnaryNode) and node.op == '*':
+      self.expression(node.base)
     else:
       raise Exception("unknown")
   

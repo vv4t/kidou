@@ -98,7 +98,7 @@ class Parse:
     ]
     
     if set_num == len(op_set):
-      return self.primitive()
+      return self.unary()
     
     lhs = self.binop_set(set_num + 1)
     
@@ -115,7 +115,56 @@ class Parse:
     if not valid_binop(lhs.data_type, op.text, rhs.data_type):
       raise TokenError(op, f"invalid '{op}' operation between '{lhs.data_type}' and '{rhs.data_type}'")
     
+    if op.text == '=' and not islvalue(lhs):
+      raise TokenError(op, f"cannot assign to non-lvalue '{lhs}'")
+    
     return BinopNode(lhs, op.text, rhs, lhs.data_type)
+  
+  def unary(self):
+    if self.lex.accept("&"):
+      return self.address_of()
+    elif self.lex.accept("*"):
+      return self.dereference()
+    else:
+      return self.postfix()
+  
+  def dereference(self):
+    base = self.expect(self.unary(), "unary-expression")
+    
+    if not ispointer(base.data_type):
+      raise TokenError(self.lex.token, f"cannot dereference non-pointer '{base}'")
+    
+    return UnaryNode('*', base, data_type = base_type(base.data_type))
+  
+  def address_of(self):
+    base = self.expect(self.unary(), "unary-expression")
+    
+    if not islvalue(base):
+      raise TokenError(self.lex.token, f"lvalue required as unary '&' operand")
+    
+    return UnaryNode('&', base, pointer_type(base.data_type))
+  
+  def postfix(self):
+    base = self.primitive()
+    
+    if not base:
+      return None
+    
+    while True:
+      if self.lex.match('['):
+        base = self.index(base)
+      else:
+        return base
+  
+  def index(self, base):
+    if not isarray(base.data_type) and not ispointer(base.data_type):
+      raise TokenError(self.lex.token, f"cannot index non-array and non-pointer '{base}'")
+    
+    self.lex.expect('[')
+    pos = self.expect(self.expression(), "expression")
+    self.lex.expect(']')
+    
+    return IndexNode(base, pos, base_type(base.data_type))
   
   def primitive(self):
     if self.lex.match("Number"):
@@ -127,7 +176,7 @@ class Parse:
       return self.name(token)
     
     if self.lex.accept("("):
-      body = self.expression()
+      body = self.expect(self.expression(), "expression")
       self.lex.expect(")")
       return body
     
@@ -140,3 +189,8 @@ class Parse:
       raise TokenError(token, f"name '{token.text}' is not defined")
     
     return NameNode(var, var.data_type)
+  
+  def expect(self, value, name):
+    if not value:
+      raise TokenError(self.lex.token, f"expected '{name}' but found '{self.lex.token}'")
+    return value
