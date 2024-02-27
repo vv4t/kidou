@@ -64,6 +64,8 @@ class Gen:
       self.emit("lb")
     elif sizeof(node.data_type) == 4:
       self.emit("lw")
+    elif isarray(node.data_type):
+      pass
     else:
       raise Exception("unknown")
   
@@ -82,6 +84,9 @@ class Gen:
       raise Exception("unknown")
   
   def binop(self, node):
+    lhs_type = node.lhs.data_type
+    rhs_type = node.rhs.data_type
+    
     if node.op == '=':
       self.assign(node)
     else:

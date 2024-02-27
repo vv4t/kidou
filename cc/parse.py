@@ -30,7 +30,7 @@ class Parse:
     ])
   
   def var_statement(self):
-    var = self.var()
+    var = self.var(self.scope)
     
     if not var:
       return None
@@ -49,38 +49,83 @@ class Parse:
     
     return ExpressionStatement(expression)
   
-  def var(self):
+  def var(self, scope):
     specifier = self.specifier()
     
     if not specifier:
       return None
     
+    var = self.declarator(specifier)
+    
+    if not var:
+      if specifier.name != "struct":
+        raise TokenError(self.lex.token, f"declaration does not declare anything")
+      return True
+    
+    if not scope.insert(var):
+      raise TokenError(name, f"redefinition of '{var.name}'")
+    
+    return var
+  
+  def declarator(self, specifier):
     declarator = None
     
     while self.lex.accept('*'):
       declarator = Pointer(declarator)
     
-    name = self.lex.expect("Identifier")
+    if declarator:
+      name = self.lex.expect("Identifier")
+    elif self.lex.match("Identifier"):
+      name = self.lex.pop()
+    else:
+      return None
     
     while self.lex.accept('['):
       size = self.lex.expect("Number")
       declarator = Array(declarator, int(size.text))
       self.lex.expect(']')
     
-    data_type = DataType(specifier.text, declarator)
+    data_type = DataType(specifier, declarator)
     
-    var = Var(data_type, name.text)
+    if sizeof(data_type) == 0:
+      raise TokenError(name, f"aggregate '{data_type} {name}' has incomplete type and cannot be defined") 
     
-    if not self.scope.insert(var):
-      raise TokenError(name, f"redefinition of '{name}'")
-    
-    return var
+    return Var(data_type, name.text)
   
   def specifier(self):
-    return find_match([
+    name = find_match([
       lambda : self.lex.accept("int"),
-      lambda : self.lex.accept("char")
+      lambda : self.lex.accept("char"),
+      lambda : self.lex.accept("struct")
     ])
+    
+    if not name:
+      return None
+    
+    struct_scope = None
+    
+    if name.text == "struct":
+      struct_name = self.lex.expect("Identifier")
+      struct_scope = self.scope.find_struct(struct_name.text)
+      
+      if not struct_scope:
+        struct_scope = Scope(struct_name.text)
+        self.scope.insert_struct(struct_scope)
+      
+      if self.lex.accept("{"):
+        if struct_scope.size > 0:
+          raise TokenError(struct_name, "redefinition of 'struct {struct_name}'")
+        
+        var = self.var(struct_scope)
+        
+        while var:
+          self.lex.expect(';');
+          struct_scope.insert(var)
+          var = self.var(struct_scope)
+        
+        self.lex.expect("}")
+    
+    return Specifier(name.text, struct_scope)
   
   def expression(self):
     return self.binop()
@@ -169,7 +214,7 @@ class Parse:
   def primitive(self):
     if self.lex.match("Number"):
       token = self.lex.pop()
-      return ConstantNode(int(token.text), DataType("int", None))
+      return ConstantNode(int(token.text), type_specifier("int"))
     
     if self.lex.match("Identifier"):
       token = self.lex.pop()

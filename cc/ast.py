@@ -1,9 +1,23 @@
 import math
 
 class Scope:
-  def __init__(self):
+  def __init__(self, name=""):
     self.size = 0
+    self.struct = {}
     self.var = {}
+    self.name = name
+  
+  def insert_struct(self, struct_scope):
+    if self.find_struct(struct_scope.name):
+      return None
+    
+    self.struct[struct_scope.name] = struct_scope
+  
+  def find_struct(self, name):
+    if name not in self.struct:
+      return None
+    
+    return self.struct[name]
   
   def insert(self, var):
     if var.name in self.var:
@@ -30,7 +44,10 @@ def valid_binop(a, op, b):
     (
       ['+', '-', '*', '/', '=' ],
       [
-        (data_type_cmp(a, DataType("int", None)), data_type_cmp(b, DataType("int", None))),
+        (data_type_cmp(a, type_specifier("int")), data_type_cmp(b, type_specifier("int"))),
+        (data_type_cmp(a, type_specifier("int")), data_type_cmp(b, type_specifier("char"))),
+        (data_type_cmp(a, type_specifier("char")), data_type_cmp(b, type_specifier("char"))),
+        (data_type_cmp(a, type_specifier("char")), data_type_cmp(b, type_specifier("int"))),
         (ispointer(a), ispointer(b))
       ]
     )
@@ -38,7 +55,7 @@ def valid_binop(a, op, b):
   
   for cmp_op, cmp_list in cmp_table:
     if op in cmp_op:
-      for x,y in cmp_list:
+      for x, y in cmp_list:
         if x and y:
           return True
   
@@ -57,6 +74,9 @@ def ispointer(data_type):
 def isarray(data_type):
   return isinstance(data_type.declarator, Array)
 
+def isstruct(data_type):
+  return data_type.specifier.name == "struct"
+
 def pointer_type(data_type):
   return DataType(data_type.specifier, Pointer(data_type.declarator))
 
@@ -70,7 +90,10 @@ def sizeof(data_type):
   specifier_size = { "int": 4, "char": 1 }
   
   if not data_type.declarator:
-    return specifier_size[data_type.specifier]
+    if isstruct(data_type):
+      return data_type.specifier.struct_scope.size
+    
+    return specifier_size[data_type.specifier.name]
   elif isinstance(data_type.declarator, Array):
     return data_type.declarator.size * sizeof(DataType(data_type.specifier, data_type.declarator.base))
   elif isinstance(data_type.declarator, Pointer):
@@ -90,13 +113,25 @@ def declarator_with_name(declarator, name):
 
 def data_type_cmp(a, b):
   if not a.declarator and not b.declarator:
-    return a.specifier == b.specifier
+    return specifier_type_cmp(a.specifier, b.specifier)
   elif not a.declarator:
     return False
   elif not b.declarator:
     return False
   elif type(a.declarator) == type(b.declarator):
     return data_type_cmp(DataType(a.specifier, a.declarator.base), DataType(b.specifier, b.declarator.base))
+
+def specifier_type_cmp(a, b):
+  if a.name == b.name:
+    if a.name == "struct":
+      return a.struct_scope == b.struct_scope
+    else:
+      return True
+  else:
+    return False
+
+def type_specifier(specifier, struct_name=""):
+  return DataType(Specifier(specifier, struct_name), None)
 
 class CompoundStatement:
   def __init__(self, body):
@@ -132,7 +167,7 @@ class Var:
     return f"{self.data_type.specifier} {declarator_with_name(self.data_type.declarator, self.name)}"
 
 class DataType:
-  def __init__(self, specifier, declarator):
+  def __init__(self, specifier, declarator=None):
     self.specifier = specifier
     self.declarator = declarator
   
@@ -141,6 +176,17 @@ class DataType:
       return f"{self.specifier}{self.declarator}"
     else:
       return f"{self.specifier}"
+
+class Specifier:
+  def __init__(self, name, struct_scope=None):
+    self.name = name
+    self.struct_scope = struct_scope
+  
+  def __repr__(self):
+    if self.name == "struct":
+      return f"{self.name} {self.struct_scope.name}"
+    else:
+      return f"{self.name}"
 
 class Pointer:
   def __init__(self, base):
