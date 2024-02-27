@@ -78,8 +78,8 @@ class Parse:
   
   def specifier(self):
     return find_match([
-      lambda : self.lex.accept('int'),
-      lambda : self.lex.accept('char')
+      lambda : self.lex.accept("int"),
+      lambda : self.lex.accept("char")
     ])
   
   def expression(self):
@@ -112,16 +112,19 @@ class Parse:
     if not rhs:
       raise TokenError(op, f"expected 'expression' after '{op}' but found '{self.lex.token.text}'")
     
-    return BinopNode(lhs, op.text, rhs)
+    if not valid_binop(lhs.data_type, op.text, rhs.data_type):
+      raise TokenError(op, f"invalid '{op}' operation between '{lhs.data_type}' and '{rhs.data_type}'")
+    
+    return BinopNode(lhs, op.text, rhs, lhs.data_type)
   
   def primitive(self):
     if self.lex.match("Number"):
       token = self.lex.pop()
-      return ConstantNode(int(token.text))
+      return ConstantNode(int(token.text), DataType("int", None))
     
     if self.lex.match("Identifier"):
       token = self.lex.pop()
-      return IdentifierNode(token.text)
+      return self.name(token)
     
     if self.lex.accept("("):
       body = self.expression()
@@ -129,3 +132,11 @@ class Parse:
       return body
     
     return None
+  
+  def name(self, token):
+    var = self.scope.find(token.text)
+    
+    if not var:
+      raise TokenError(token, f"name '{token.text}' is not defined")
+    
+    return NameNode(var, var.data_type)
