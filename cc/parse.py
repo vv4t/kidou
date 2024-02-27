@@ -6,7 +6,29 @@ class Parse:
   def __init__(self, lex):
     self.lex = lex
     self.scope = Scope()
-    self.node = self.compound_statement()
+    self.node = self.function()
+  
+  def function(self):
+    specifier = self.specifier()
+    
+    if not specifier:
+      return None
+    
+    declarator = None
+    
+    while self.lex.accept('*'):
+      declarator = Pointer(declarator)
+    
+    data_type = DataType(specifier, declarator)
+    
+    name = self.lex.expect("Identifier")
+    
+    self.lex.expect('(')
+    self.lex.expect(')')
+    
+    body = self.expect(self.compound_statement(), "compound-statement")
+    
+    return body
   
   def compound_statement(self):
     if self.lex.accept('{'):
@@ -21,7 +43,7 @@ class Parse:
       
       return CompoundStatement(body)
     else:
-      return CompoundStatement([ self.statement() ])
+      return CompoundStatement([ self.expect(self.statement(), "statement") ])
   
   def statement(self):
     return find_match([

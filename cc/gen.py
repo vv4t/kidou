@@ -52,8 +52,8 @@ class Gen:
       self.emit("lb")
     elif sizeof(node.data_type) == 4:
       self.emit("lw")
-    elif isarray(node.data_type):
-      pass
+    elif isstruct(node.data_type):
+      self.emit(f"load {sizeof(node.data_type) // 4}")
     else:
       raise Exception("unknown")
   
@@ -125,6 +125,8 @@ class Gen:
       self.emit("sb")
     elif sizeof(node.data_type) == 4:
       self.emit("sw")
+    elif isstruct(node.data_type):
+      self.emit(f"store {sizeof(node.data_type) // 4}")
     else:
       raise Exception("unknown")
   
