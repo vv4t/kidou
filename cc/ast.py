@@ -65,6 +65,7 @@ def islvalue(node):
   return (
     isinstance(node, NameNode) or
     isinstance(node, IndexNode) or
+    isinstance(node, AccessNode) or
     (isinstance(node, UnaryNode) and node.op == '*')
   )
 
@@ -75,7 +76,7 @@ def isarray(data_type):
   return isinstance(data_type.declarator, Array)
 
 def isstruct(data_type):
-  return data_type.specifier.name == "struct"
+  return data_type.specifier.name == "struct" and not data_type.declarator
 
 def pointer_type(data_type):
   return DataType(data_type.specifier, Pointer(data_type.declarator))
@@ -236,6 +237,16 @@ class IndexNode:
   
   def __repr__(self):
     return f'{self.base}[{self.pos}]'
+
+class AccessNode:
+  def __init__(self, base, var, direct, data_type):
+    self.base = base
+    self.var = var
+    self.direct = direct
+    self.data_type = data_type
+  
+  def __repr__(self):
+    return f'{self.base}.{self.var.name}'
 
 class ConstantNode:
   def __init__(self, value, data_type):

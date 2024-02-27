@@ -45,18 +45,6 @@ class Gen:
     else:
       raise Exception("unknown")
   
-  def index(self, node):
-    self.lvalue(node.base)
-    self.expression(node.pos)
-    
-    size = sizeof(node.data_type)
-    
-    if size > 1:
-      self.emit(f"const {size}")
-      self.emit("mul")
-    
-    self.emit("add")
-  
   def value(self, node):
     self.lvalue(node)
     
@@ -71,17 +59,44 @@ class Gen:
   
   def lvalue(self, node):
     if isinstance(node, NameNode):
-      self.emit("fp")
-      
-      if node.var.pos > 0:
-        self.emit(f"const {node.var.pos}")
-        self.emit("add")
+      self.name(node)
     elif isinstance(node, IndexNode):
       self.index(node)
+    elif isinstance(node, AccessNode):
+      self.access(node)
     elif isinstance(node, UnaryNode) and node.op == '*':
       self.expression(node.base)
     else:
       raise Exception("unknown")
+  
+  def index(self, node):
+    self.lvalue(node.base)
+    self.expression(node.pos)
+    
+    size = sizeof(node.data_type)
+    
+    if size > 1:
+      self.emit(f"const {size}")
+      self.emit("mul")
+    
+    self.emit("add")
+  
+  def access(self, node):
+    if node.direct:
+      self.lvalue(node.base)
+    else:
+      self.value(node.base)
+    
+    if node.var.pos > 0:
+      self.emit(f"const {node.var.pos}")
+      self.emit("add")
+  
+  def name(self, node):
+    self.emit("fp")
+    
+    if node.var.pos > 0:
+      self.emit(f"const {node.var.pos}")
+      self.emit("add")
   
   def binop(self, node):
     lhs_type = node.lhs.data_type

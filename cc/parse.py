@@ -198,8 +198,36 @@ class Parse:
     while True:
       if self.lex.match('['):
         base = self.index(base)
+      if self.lex.match('.'):
+        base = self.access(base)
+      if self.lex.match('->'):
+        base = self.access(base, direct=False)
       else:
         return base
+  
+  def access(self, base, direct=True):
+    if direct:
+      self.lex.expect(".")
+    else:
+      self.lex.expect("->")
+      
+    name = self.lex.expect("Identifier")
+    
+    if direct:
+      if not isstruct(base.data_type):
+        raise TokenError(name, f"request for '{name}' from '{base}', which is not a structure")
+    else:
+      if not ispointer(base.data_type) or not isstruct(base_type(base.data_type)):
+        raise TokenError(name, f"indirect request for '{name}' from '{base}', which is not a structure pointer")
+    
+    struct_scope = base.data_type.specifier.struct_scope
+    
+    var = struct_scope.find(name.text)
+    
+    if not var:
+      raise TokenError(name, f"'{base.data_type}' has no member named '{name}'")
+    
+    return AccessNode(base, var, direct, var.data_type)
   
   def index(self, base):
     if not isarray(base.data_type) and not ispointer(base.data_type):
