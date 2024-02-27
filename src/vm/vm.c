@@ -197,8 +197,8 @@ void vm_exec(vm_t *vm)
       return;
     }
     
-    printf(".%s\n", op_text(op));
-    vm_info(vm);
+    // printf(".%s\n", op_text(op));
+    // vm_info(vm);
   }
 }
 

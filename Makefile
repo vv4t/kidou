@@ -1,9 +1,12 @@
 .PHONY=default run
 
-default: kidou run
+default: cc kidou run
 
-kidou: src/*.c
-	gcc src/*.c -o kidou
+kidou: src/vm/*.c
+	gcc -Isrc src/common/*.c src/vm/*.c -o kidou
+
+cc: src/cc/*.c
+	gcc -Isrc src/common/*.c src/cc/*.c -o cc
 
 run:
-	./kidou
+	./cc

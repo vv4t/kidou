@@ -2,7 +2,7 @@
 
 #include <string.h>
 #include <stdlib.h>
-#include "file.h"
+#include <common/file.h>
 
 bool asm_load(vm_t *vm, table_t *table, const char *path)
 {
