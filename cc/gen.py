@@ -35,7 +35,7 @@ class Gen:
       ip += 1 + line.count(" ")
   
   def unit(self, node):
-    for function in node.functions:
+    for function in node.function:
       self.function(function)
   
   def function(self, node):
@@ -83,7 +83,7 @@ class Gen:
   def return_statement(self, node):
     if node.body:
       self.expression(node.body)
-      return_pos = -4 - self.current_function.scope.param_size - sizeof(self.current_function.data_type)
+      return_pos = -8 - self.current_function.scope.param_size - sizeof(self.current_function.data_type)
       self.emit("fp")
       self.emit(f"const {return_pos}")
       self.emit("add")
@@ -119,7 +119,10 @@ class Gen:
       self.expression(arg)
     
     self.emit(f"call {node.function.name}")
-    self.emit(f'free {math.ceil(node.function.scope.param_size / 4)}')
+    
+    arg_size = math.ceil(node.function.scope.param_size / 4)
+    if arg_size > 0:
+      self.emit(f'free {arg_size}')
   
   def unary(self, node):
     if node.op == '&':

@@ -9,24 +9,29 @@ class Parse:
     self.node = self.unit()
   
   def unit(self):
-    function = self.function()
+    function = []
+    var = []
     
-    if not function:
-      return None
+    match = self.function_or_specifier()
     
-    functions = []
+    while match:
+      if isinstance(match, Function):
+        function.append(match)
+      
+      match = self.function_or_specifier()
     
-    while function:
-      functions.append(function)
-      function = self.function()
+    self.lex.expect("EOF")
     
-    return Unit(functions)
+    return Unit(function)
   
-  def function(self):
+  def function_or_specifier(self):
     specifier = self.specifier()
     
     if not specifier:
       return None
+    
+    if self.lex.accept(';'):
+      return specifier
     
     declarator = None
     

@@ -18,6 +18,9 @@ class Scope:
   
   def find_struct(self, name):
     if name not in self.struct:
+      if self.parent:
+        return self.parent.find_struct(name)
+      
       return None
     
     return self.struct[name]
@@ -48,7 +51,7 @@ class Scope:
     
     self.var[var.name] = var
     self.param_size = math.ceil(self.param_size / align) * align
-    var.pos = -4 - self.param_size - size
+    var.pos = -8 - self.param_size - size
     self.param_size += size
     
     return True
@@ -161,11 +164,11 @@ def type_specifier(specifier, struct_name=""):
   return DataType(Specifier(specifier, struct_name), None)
 
 class Unit:
-  def __init__(self, functions):
-    self.functions = functions
+  def __init__(self, function):
+    self.function = function
   
   def __repr__(self, indent=0):
-    return (" " * indent + "\n").join([ function.__repr__(indent=indent+2) for function in self.functions ])
+    return (" " * indent + "\n").join([ function.__repr__(indent=indent+2) for function in self.function ])
 
 class Function:
   def __init__(self, data_type, name, param, body, scope):
