@@ -47,7 +47,9 @@ class Parse:
     self.scope.insert_function(function)
     
     self.scope = scope
+    self.return_type = data_type
     function.body = self.expect(self.compound_statement(), "compound-statement")
+    self.return_type = None
     self.scope = scope.parent
     
     return function
@@ -89,11 +91,31 @@ class Parse:
   
   def statement(self):
     return find_match([
+      lambda : self.return_statement(),
       lambda : self.print_statement(),
       lambda : self.var_statement(),
       lambda : self.expression_statement()
     ])
   
+  def return_statement(self):
+    if not self.lex.accept("return"):
+      return None
+    
+    if self.lex.accept(';'):
+      if self.return_type:
+        raise TokenError(self.lex.token, f"return-statement with no value in function returning '{self.return_type}'")
+      
+      return ReturnStatement(None)
+    else:
+      body = self.expect(self.expression(), "expression")
+      
+      if not data_type_cmp(body.data_type, self.return_type):
+        raise TokenError(self.lex.token, f"incompatible expression type '{body.data_type}' for return type '{self.return_type}'")
+      
+      self.lex.expect(';')
+      
+      return ReturnStatement(body)
+    
   def print_statement(self):
     print_type = find_match([
       lambda : self.lex.accept("print_int"),

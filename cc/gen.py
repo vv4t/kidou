@@ -1,33 +1,65 @@
+import math
 from parse import *
 
 class Gen:
   def __init__(self, parse):
     self.parse = parse
+    self.num_label = 0
+    self.text = ""
+    self.ip = 0
+    self.label = {}
+    self.current_function = None
+    self.return_label = None
+    
+    self.emit('enter 1')
+    self.emit('call program')
+    self.emit('leave')
+    self.emit('int 1')
     
     self.unit(parse.node)
     
-    self.emit('main:')
-    self.emit('enter 1')
-    self.emit('call program')
-    self.emit('leave 1')
-    self.emit('int 1')
+    self.dump()
+    
+    for label, pos in self.label.items():
+      self.text = self.text.replace(label, str(pos))
+  
+  def dump(self):
+    label_map = {v: k for k, v in self.label.items()}
+    
+    ip = 0
+    for line in self.text.split("\n"):
+      if ip in label_map:
+        print(f"  {label_map[ip]}:")
+      
+      print(ip, line)
+      ip += 1 + line.count(" ")
   
   def unit(self, node):
     for function in node.functions:
       self.function(function)
   
   def function(self, node):
-    self.emit(f'{node.name}:')
-    self.emit(f'enter {node.scope.size // 4}')
+    self.emit_label(node.name)
+    self.emit(f'enter {math.ceil(node.scope.size / 4)}')
+    
+    self.current_function = node
+    self.return_label = self.label_new()
+    
     self.statement(node.body)
+    self.emit_label(self.return_label)
     self.emit('leave')
     self.emit('ret')
+    
+    self.return_label = None
+    self.current_function = None
   
   def statement(self, node):
     if isinstance(node, VarStatement):
       pass
     elif isinstance(node, PrintStatement):
       self.print(node)
+    elif isinstance(node, ReturnStatement):
+      self.return_statement(node)
     elif isinstance(node, ExpressionStatement):
       self.expression(node.body)
     elif isinstance(node, CompoundStatement):
@@ -46,6 +78,21 @@ class Gen:
     else:
       raise Exception("unknown")
   
+  def return_statement(self, node):
+    if node.body:
+      self.expression(node.body)
+      return_pos = -4 - self.current_function.scope.param_size - sizeof(self.current_function.data_type)
+      self.emit("fp")
+      self.emit(f"const {return_pos}")
+      self.emit("add")
+      
+      if sizeof(self.current_function.data_type) <= 4:
+        self.emit("sw")
+      else:
+        self.emit(f"store {sizeof(self.current_function.data_type) // 4}")
+    
+    self.emit(f"jmp {self.return_label}")
+  
   def expression(self, node):
     if islvalue(node):
       self.value(node)
@@ -61,14 +108,16 @@ class Gen:
       raise Exception("unknown")
   
   def call(self, node):
-    arg_size = 0
+    return_size = sizeof(node.function.data_type)
+    
+    if return_size > 0:
+      self.emit(f"alloc {math.ceil(return_size / 4)}")
     
     for arg in node.arg:
       self.expression(arg)
-      arg_size += sizeof(arg.data_type)
     
     self.emit(f"call {node.function.name}")
-    self.emit(f"free {arg_size // 4}")
+    self.emit(f'free {math.ceil(node.function.scope.param_size / 4)}')
   
   def unary(self, node):
     if node.op == '&':
@@ -169,5 +218,16 @@ class Gen:
   def constant(self, node):
     self.emit(f'const {node.value}')
   
+  def label_new(self):
+    self.num_label += 1
+    return "." + str(self.num_label)
+  
+  def emit_label(self, label):
+    if label in self.label:
+      raise Exception(f"label redefinition '{label}'")
+    
+    self.label[label] = self.ip
+  
   def emit(self, text):
-    print(text)
+    self.text += text + "\n"
+    self.ip += 1 + text.count(" ")

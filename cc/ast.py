@@ -44,7 +44,7 @@ class Scope:
       return False
     
     size = sizeof(var.data_type)
-    align = min(size, 4)
+    align = 4
     
     self.var[var.name] = var
     self.param_size = math.ceil(self.param_size / align) * align
@@ -194,6 +194,13 @@ class Function:
       return " " * indent + f"{self.data_type} {self.name}{param}{body}"
     else:
       return " " * indent + f"{self.data_type} {self.name}{param};"
+
+class ReturnStatement:
+  def __init__(self, body):
+    self.body = body
+  
+  def __repr__(self, indent=0):
+    return " " * indent + f"return {self.body}"
 
 class PrintStatement:
   def __init__(self, print_type, body):
