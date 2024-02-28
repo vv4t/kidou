@@ -109,7 +109,7 @@ class Parse:
     else:
       body = self.expect(self.expression(), "expression")
       
-      if not data_type_cmp(body.data_type, self.return_type):
+      if not c_type_check(body.data_type, '=', self.return_type):
         raise TokenError(self.lex.token, f"incompatible expression type '{body.data_type}' for return type '{self.return_type}'")
       
       self.lex.expect(';')
@@ -119,7 +119,8 @@ class Parse:
   def print_statement(self):
     print_type = find_match([
       lambda : self.lex.accept("print_int"),
-      lambda : self.lex.accept("print_char")
+      lambda : self.lex.accept("print_char"),
+      lambda : self.lex.accept("print_string")
     ])
     
     if not print_type:
@@ -136,8 +137,9 @@ class Parse:
     if not var:
       return None
     
-    if not self.scope.insert(var):
-      raise TokenError(self.lex.token, f"redefinition of '{var.name}'")
+    if var.name:
+      if not self.scope.insert(var):
+        raise TokenError(self.lex.token, f"redefinition of '{var.name}'")
     
     self.lex.expect(';')
     
@@ -164,7 +166,7 @@ class Parse:
     if not var:
       if specifier.name != "struct":
         raise TokenError(self.lex.token, f"declaration does not declare anything")
-      return True
+      return Var(specifier, None)
     
     return var
   
@@ -210,7 +212,7 @@ class Parse:
       struct_scope = self.scope.find_struct(struct_name.text)
       
       if not struct_scope:
-        struct_scope = Scope(struct_name.text)
+        struct_scope = Scope(name=struct_name.text)
         self.scope.insert_struct(struct_scope)
       
       if self.lex.accept("{"):
@@ -258,7 +260,7 @@ class Parse:
     if not rhs:
       raise TokenError(op, f"expected 'expression' after '{op}' but found '{self.lex.token.text}'")
     
-    if not valid_binop(lhs.data_type, op.text, rhs.data_type):
+    if not c_type_check(lhs.data_type, op.text, rhs.data_type):
       raise TokenError(op, f"invalid '{op}' operation between '{lhs.data_type}' and '{rhs.data_type}'")
     
     if op.text == '=' and not islvalue(lhs):
@@ -379,7 +381,7 @@ class Parse:
       raise TokenError(name, f"too many arguments to function '{function.__repr__(show_body=False)}'")
     
     for a, b in zip(arg, function.param):
-      if not data_type_cmp(a.data_type, b.data_type):
+      if not c_type_check(a.data_type, '=', b.data_type):
         raise TokenError(name, f"incompatible type for argument '{b.name}' of '{function.__repr__(show_body=False)}'") 
     
     return CallNode(function, arg, function.data_type)

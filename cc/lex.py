@@ -99,7 +99,8 @@ class Lex:
       "return",
       "struct",
       "print_int",
-      "print_char"
+      "print_char",
+      "print_string"
     ]
     
     if match:

@@ -76,27 +76,16 @@ class Scope:
     
     return self.var[name]
 
-def valid_binop(a, op, b):
-  cmp_table = [
-    (
-      ['+', '-', '*', '/', '=' ],
-      [
-        data_type_cmp(a, type_specifier("int")) and data_type_cmp(b, type_specifier("int")),
-        data_type_cmp(a, type_specifier("int")) and data_type_cmp(b, type_specifier("char")),
-        data_type_cmp(a, type_specifier("char")) and data_type_cmp(b, type_specifier("char")),
-        data_type_cmp(a, type_specifier("char")) and data_type_cmp(b, type_specifier("int")),
-        isstruct(a) and isstruct(b) and a.specifier.struct_scope == b.specifier.struct_scope,
-        ispointer(a) and ispointer(b) and data_type_cmp(base_type(a), base_type(b))
-      ]
-    )
-  ]
+def c_type_check(a, op, b):
+  check = False
   
-  for cmp_op, cmp_list in cmp_table:
-    if op in cmp_op:
-      for match in cmp_list:
-        return True
+  if op in ['+', '-', '*', '/', '=' ]:
+    check = not isstruct(a) and not isstruct(b) 
   
-  return False
+  if not check and op in [ '=' ]:
+    check = isstruct(a) and isstruct(b) and a.specifier.struct_scope == b.specifier.struct_scope
+  
+  return check
 
 def islvalue(node):
   return (

@@ -75,6 +75,8 @@ class Gen:
       self.emit("int 2")
     elif node.print_type == "print_char":
       self.emit("int 3")
+    elif node.print_type == "print_string":
+      self.emit("int 4")
     else:
       raise Exception("unknown")
   
