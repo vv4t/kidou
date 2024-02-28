@@ -202,6 +202,15 @@ class PrintStatement:
   def __repr__(self, indent=0):
     return " " * indent + f"{self.print_type} {self.body}"
 
+class IfStatement:
+  def __init__(self, condition, body):
+    self.condition = condition
+    self.body = body
+  
+  def __repr__(self, indent=0):
+    body = f"\n{self.body.__repr__(indent=indent)}"
+    return " " * indent + f"if ({self.cond})\n{body}"
+
 class CompoundStatement:
   def __init__(self, body):
     self.body = body

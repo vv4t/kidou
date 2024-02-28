@@ -1,71 +1,46 @@
-square:
-enter 0
-const 1
-fp
-const -8
-add
-lw
-const 0
-const 4
-mul
-add
-sw
-const 2
-fp
-const -8
-add
-lw
-const 1
-const 4
-mul
-add
-sw
-const 3
-fp
-const -8
-add
-lw
-const 2
-const 4
-mul
-add
-sw
-leave
-ret
-program:
-enter 4
-fp
-const 0
-const 4
-mul
-add
-call square
-free 1
-fp
-const 0
-const 4
-mul
-add
-lw
-int 2
-fp
-const 1
-const 4
-mul
-add
-lw
-int 2
-fp
-const 2
-const 4
-mul
-add
-lw
-int 2
-leave
-ret
-main:
 enter 1
-call program
-leave 1
+call 39
+leave
 int 1
+enter 2
+fp
+const -16
+add
+lw
+fp
+sw
+fp
+const -12
+add
+lw
+fp
+const 4
+add
+sw
+fp
+load 2
+fp
+const -24
+add
+store 2
+jmp 37
+leave
+ret
+enter 2
+alloc 2
+const 8888
+const 9999
+call 7
+free 2
+fp
+store 2
+fp
+lw
+int 2
+fp
+const 4
+add
+lw
+int 2
+leave
+ret

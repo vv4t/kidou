@@ -2,34 +2,24 @@
 
 #include "vm.h"
 #include "asm.h"
-#include "table.h"
 
 typedef enum {
   STATUS_NONE,
   STATUS_EXIT,
   STATUS_PRINT_INT,
   STATUS_PRINT_CHAR,
+  STATUS_PRINT_STRING
 } status_t;
 
 int main(int argc, char *argv[])
 {
-  table_t table;
-  table_init(&table);
-  
   vm_t vm;
   vm_init(&vm);
   
-  asm_load(&vm, &table, "code.kd");
-  
-  sym_t *sym = sym_find(&table, "main");
-  
-  if (!sym) {
-    fprintf(stderr, "kidou: no entry point 'main' found.\n");
-    return 1;
-  }
+  asm_load(&vm, "code.kd");
   
   vm.status = STATUS_NONE;
-  vm.ip = sym->pos;
+  vm.ip = 0;
   
   while (vm.status != STATUS_EXIT) {
     vm_exec(&vm);
@@ -40,6 +30,9 @@ int main(int argc, char *argv[])
       break;
     case STATUS_PRINT_CHAR:
       printf("> %c\n", vm_pop(&vm));
+      break;
+    case STATUS_PRINT_STRING:
+      printf("> %s\n", &((char*) vm.stack)[vm_pop(&vm)]);
       break;
     }
   }

@@ -1,14 +1,20 @@
-int square(int *a)
+struct thing {
+  int x;
+  int y;
+};
+
+struct thing make(int x, int y)
 {
-  a[0] = 1;
-  a[1] = 2;
-  a[2] = 3;
+  struct thing thing;
+  thing.x = x;
+  thing.y = y;
+  return thing;
 }
 
 int program() {
-  int a[4];
-  square(&a[0]);
-  print_int a[0];
-  print_int a[1];
-  print_int a[2];
+  struct thing a;
+  a = make(8888, 9999);
+  
+  print_int a.x;
+  print_int a.y;
 }

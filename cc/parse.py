@@ -96,11 +96,27 @@ class Parse:
   
   def statement(self):
     return find_match([
+      lambda : self.if_statement(),
       lambda : self.return_statement(),
       lambda : self.print_statement(),
       lambda : self.var_statement(),
       lambda : self.expression_statement()
     ])
+  
+  def if_statement(self):
+    if not self.lex.accept("if"):
+      return None
+    
+    self.lex.expect("(")
+    condition = self.expect(self.expression(), "expression")
+    self.lex.expect(")")
+    
+    body = self.expect(self.compound_statement(), "if-statement-body")
+    
+    node = IfStatement(condition, body)
+    print(node)
+    
+    return node
   
   def return_statement(self):
     if not self.lex.accept("return"):

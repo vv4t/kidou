@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include "file.h"
 
-bool asm_load(vm_t *vm, table_t *table, const char *path)
+bool asm_load(vm_t *vm, const char *path)
 {
   char *text = file_read_all(path);
   
@@ -17,17 +17,8 @@ bool asm_load(vm_t *vm, table_t *table, const char *path)
   int ip = 0;
   
   while (token) {
-    sym_t *sym = sym_find(table, token);
-    
-    if (sym) {
-      vm->text[ip++] = sym->pos;
-    } else if (token[strlen(token) - 1] == ':') {
-      token[strlen(token) - 1] = 0;
-      sym_insert(table, token, ip);
-    } else {
-      op_t op = text_op(token);
-      vm->text[ip++] = op;
-    }
+    op_t op = text_op(token);
+    vm->text[ip++] = op;
     
     token = strtok(NULL, " \n");
   }

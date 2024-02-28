@@ -32,9 +32,9 @@ void vm_info(vm_t *vm)
     printf(" 0x%03x - ", i * col);
     for (int j = 0; j < col; j++) {
       if (i * 4 + j == vm->sp) {
-        printf("(%03i)", vm->stack[i * col + j]);
+        printf("(%06x)", vm->stack[i * col + j]);
       } else {
-        printf(" %03i ", vm->stack[i * col + j]);
+        printf(" %06x ", vm->stack[i * col + j]);
       }
     }
     printf("\n");
@@ -201,11 +201,11 @@ void vm_exec(vm_t *vm)
     case VM_ENTER:
       a = vm_next(vm);
       vm_push(vm, vm->fp);
-      vm->fp = vm->sp;
+      vm->fp = vm->sp + 1;
       vm->sp += a;
       break;
     case VM_LEAVE:
-      vm->sp = vm->fp;
+      vm->sp = vm->fp - 1;
       a = vm_pop(vm);
       vm->fp = a;
       break;
