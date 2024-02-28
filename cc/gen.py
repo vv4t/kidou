@@ -101,9 +101,14 @@ class Gen:
       raise Exception("unknown")
   
   def index(self, node):
-    self.lvalue(node.base)
-    self.expression(node.pos)
+    if ispointer(node.base.data_type):
+      self.value(node.base)
+    elif isarray(node.base.data_type):
+      self.lvalue(node.base)
+    else:
+      raise Exception("unknown")
     
+    self.expression(node.pos)
     size = sizeof(node.data_type)
     
     if size > 1:
