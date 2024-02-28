@@ -7,7 +7,8 @@
 typedef enum {
   STATUS_NONE,
   STATUS_EXIT,
-  STATUS_PRINT
+  STATUS_PRINT_INT,
+  STATUS_PRINT_CHAR,
 } status_t;
 
 int main(int argc, char *argv[])
@@ -34,8 +35,11 @@ int main(int argc, char *argv[])
     vm_exec(&vm);
     
     switch (vm.status) {
-    case STATUS_PRINT:
+    case STATUS_PRINT_INT:
       printf("> %i\n", vm_pop(&vm));
+      break;
+    case STATUS_PRINT_CHAR:
+      printf("> %c\n", vm_pop(&vm));
       break;
     }
   }

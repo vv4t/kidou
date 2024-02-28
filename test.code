@@ -1,5 +1,14 @@
+int square(int *a)
 {
-  int a;
-  int b;
-  (b + 4) * 4;
+  a[0] = 1;
+  a[1] = 2;
+  a[2] = 3;
+}
+
+int program() {
+  int a[4];
+  square(&a[0]);
+  print_int a[0];
+  print_int a[1];
+  print_int a[2];
 }

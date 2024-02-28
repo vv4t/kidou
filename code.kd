@@ -1,8 +1,71 @@
-main:
-const 3
-const 4
-const 5
+square:
+enter 0
+const 1
+fp
+const -8
 add
+lw
+const 0
+const 4
 mul
+add
+sw
+const 2
+fp
+const -8
+add
+lw
+const 1
+const 4
+mul
+add
+sw
+const 3
+fp
+const -8
+add
+lw
+const 2
+const 4
+mul
+add
+sw
+leave
+ret
+program:
+enter 4
+fp
+const 0
+const 4
+mul
+add
+call square
+free 1
+fp
+const 0
+const 4
+mul
+add
+lw
 int 2
+fp
+const 1
+const 4
+mul
+add
+lw
+int 2
+fp
+const 2
+const 4
+mul
+add
+lw
+int 2
+leave
+ret
+main:
+enter 1
+call program
+leave 1
 int 1
