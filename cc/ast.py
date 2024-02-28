@@ -23,12 +23,21 @@ class Scope:
     return self.struct[name]
   
   def insert_function(self, function):
-    if self.find(function.name):
+    if self.find_function(function.name):
       return False
     
     self.function[function.name] = function
     
     return True
+  
+  def find_function(self, name):
+    if name not in self.function:
+      if self.parent:
+        return self.parent.find_function(name)
+      
+      return None
+    
+    return self.function[name]
   
   def insert_param(self, var):
     if self.find(var.name):
@@ -60,6 +69,9 @@ class Scope:
   
   def find(self, name):
     if name not in self.var:
+      if self.parent:
+        return self.parent.find(name)
+      
       return None
     
     return self.var[name]
@@ -174,9 +186,14 @@ class Function:
     self.body = body
     self.scope = scope
   
-  def __repr__(self, indent=0):
+  def __repr__(self, indent=0, show_body=True):
     param = "(" + ", ".join([ str(p) for p in self.param ]) + ")"
-    return " " * indent + f"{self.data_type} {self.name}{param}\n{self.body.__repr__(indent=indent)}"
+    body = f"\n{self.body.__repr__(indent=indent)}" if show_body else ""
+    
+    if self.body:
+      return " " * indent + f"{self.data_type} {self.name}{param}{body}"
+    else:
+      return " " * indent + f"{self.data_type} {self.name}{param};"
 
 class PrintStatement:
   def __init__(self, print_type, body):
@@ -301,13 +318,14 @@ class AccessNode:
     return f'{self.base}.{self.var.name}'
 
 class CallNode:
-  def __init__(self, name, arg):
-    self.name = name
+  def __init__(self, function, arg, data_type):
+    self.function = function
     self.arg = arg
+    self.data_type = data_type
   
   def __repr__(self):
-    arg = "(" + ", ".join([ str(arg) for a in self.arg ]) + ")"
-    return f"{self.name}({arg})"
+    arg = "(" + ", ".join([ str(a) for a in self.arg ]) + ")"
+    return f"{self.function.name}{arg}"
 
 class ConstantNode:
   def __init__(self, value, data_type):

@@ -55,8 +55,20 @@ class Gen:
       self.binop(node)
     elif isinstance(node, UnaryNode):
       self.unary(node)
+    elif isinstance(node, CallNode):
+      self.call(node)
     else:
       raise Exception("unknown")
+  
+  def call(self, node):
+    arg_size = 0
+    
+    for arg in node.arg:
+      self.expression(arg)
+      arg_size += sizeof(arg.data_type)
+    
+    self.emit(f"call {node.function.name}")
+    self.emit(f"free {arg_size // 4}")
   
   def unary(self, node):
     if node.op == '&':

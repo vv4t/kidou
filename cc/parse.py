@@ -38,17 +38,17 @@ class Parse:
     name = self.lex.expect("Identifier")
     
     scope = Scope(parent=self.scope)
-    self.scope = scope
     
     self.lex.expect('(')
     param = self.param(scope)
     self.lex.expect(')')
     
-    body = self.expect(self.compound_statement(), "compound-statement")
-    
-    function = Function(data_type, name.text, param, body, scope)
-    self.scope = scope.parent
+    function = Function(data_type, name.text, param, None, scope)
     self.scope.insert_function(function)
+    
+    self.scope = scope
+    function.body = self.expect(self.compound_statement(), "compound-statement")
+    self.scope = scope.parent
     
     return function
   
@@ -277,9 +277,11 @@ class Parse:
     while True:
       if self.lex.match('['):
         base = self.index(base)
-      if self.lex.match('.'):
+      elif self.lex.match('('):
+        return self.call(base)
+      elif self.lex.match('.'):
         base = self.access(base)
-      if self.lex.match('->'):
+      elif self.lex.match('->'):
         base = self.access(base, direct=False)
       else:
         return base
@@ -326,7 +328,7 @@ class Parse:
     if self.lex.match("Identifier"):
       token = self.lex.pop()
       
-      if self.lex.match("("):
+      if self.lex.match('('):
         return self.call(token)
       
       return self.name(token)
@@ -339,23 +341,40 @@ class Parse:
     return None
   
   def call(self, name):
+    function = self.scope.find_function(name.text)
+    
+    if not function:
+      raise TokenError(name, f"function '{name}' is not defined")
+    
     self.lex.expect("(")
     arg = self.arg()
     self.lex.expect(")")
+    
+    if len(arg) < len(function.param):
+      raise TokenError(name, f"too few arguments to function '{function.__repr__(show_body=false)}'")
+    
+    if len(arg) > len(function.param):
+      raise TokenError(name, f"too many arguments to function '{function.__repr__(show_body=False)}'")
+    
+    for a, b in zip(arg, function.param):
+      if not data_type_cmp(a.data_type, b.data_type):
+        raise TokenError(name, f"incompatible type for argument '{b.name}' of '{function.__repr__(show_body=False)}'") 
+    
+    return CallNode(function, arg, function.data_type)
   
   def arg(self):
     arg = []
     
-    expr = self.expression()
+    body = self.expression()
     
-    if not expr:
+    if not body:
       return arg
     
-    param.append(expr)
+    arg.append(body)
     
-    while expr:
-      var = self.expect(self.expression(), "argument-expression")
-      arg.append(expr)
+    while self.lex.accept(','):
+      body = self.expect(self.expression(), "argument-expression")
+      arg.append(body)
     
     return arg
   
