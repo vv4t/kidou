@@ -6,7 +6,21 @@ class Parse:
   def __init__(self, lex):
     self.lex = lex
     self.scope = Scope()
-    self.node = self.function()
+    self.node = self.unit()
+  
+  def unit(self):
+    function = self.function()
+    
+    if not function:
+      return None
+    
+    functions = []
+    
+    while function:
+      functions.append(function)
+      function = self.function()
+    
+    return Unit(functions)
   
   def function(self):
     specifier = self.specifier()
@@ -23,13 +37,20 @@ class Parse:
     
     name = self.lex.expect("Identifier")
     
+    scope = Scope(parent=self.scope)
+    self.scope = scope
+    
     self.lex.expect('(')
-    param = self.param(self.scope)
+    param = self.param(scope)
     self.lex.expect(')')
     
     body = self.expect(self.compound_statement(), "compound-statement")
     
-    return body
+    function = Function(data_type, name.text, param, body, scope)
+    self.scope = scope.parent
+    self.scope.insert_function(function)
+    
+    return function
   
   def param(self, scope):
     param = []
@@ -78,7 +99,7 @@ class Parse:
     if not var:
       return None
     
-    if not scope.insert(var):
+    if not self.scope.insert(var):
       raise TokenError(self.lex.token, f"redefinition of '{var.name}'")
     
     self.lex.expect(';')

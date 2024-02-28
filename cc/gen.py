@@ -4,15 +4,7 @@ class Gen:
   def __init__(self, parse):
     self.parse = parse
     
-    self.emit('program:')
-    
-    self.emit(f'enter {parse.scope.size // 4}')
-    
-    self.statement(parse.node)
-    self.emit('int 2')
-    
-    self.emit('leave')
-    self.emit('ret')
+    self.unit(parse.node)
     
     self.emit('main:')
     self.emit('enter 1')
@@ -20,8 +12,21 @@ class Gen:
     self.emit('const 6')
     self.emit('const 7')
     self.emit('call program')
+    self.emit('free 3')
     self.emit('leave 1')
     self.emit('int 1')
+  
+  def unit(self, node):
+    for function in node.functions:
+      self.function(function)
+  
+  def function(self, node):
+    self.emit(f'{node.name}:')
+    self.emit(f'enter {node.scope.size // 4}')
+    self.statement(node.body)
+    self.emit('int 2')
+    self.emit('leave')
+    self.emit('ret')
   
   def statement(self, node):
     if isinstance(node, VarStatement):

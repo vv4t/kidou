@@ -1,12 +1,14 @@
 import math
 
 class Scope:
-  def __init__(self, name=""):
+  def __init__(self, parent=None, name=""):
     self.size = 0
     self.param_size = 0
+    self.function = {}
     self.struct = {}
     self.var = {}
     self.name = name
+    self.parent = parent
   
   def insert_struct(self, struct_scope):
     if self.find_struct(struct_scope.name):
@@ -20,8 +22,16 @@ class Scope:
     
     return self.struct[name]
   
+  def insert_function(self, function):
+    if self.find(function.name):
+      return False
+    
+    self.function[function.name] = function
+    
+    return True
+  
   def insert_param(self, var):
-    if var.name in self.var:
+    if self.find(var.name):
       return False
     
     size = sizeof(var.data_type)
@@ -36,7 +46,7 @@ class Scope:
     
   
   def insert(self, var):
-    if var.name in self.var:
+    if self.find(var.name):
       return False
     
     size = sizeof(var.data_type)
@@ -149,6 +159,25 @@ def specifier_type_cmp(a, b):
 
 def type_specifier(specifier, struct_name=""):
   return DataType(Specifier(specifier, struct_name), None)
+
+class Unit:
+  def __init__(self, functions):
+    self.functions = functions
+  
+  def __repr__(self, indent=0):
+    return (" " * indent + "\n").join([ function.__repr__(indent=indent+2) for function in self.functions ])
+
+class Function:
+  def __init__(self, data_type, name, param, body, scope):
+    self.data_type = data_type
+    self.name = name
+    self.param = param
+    self.body = body
+    self.scope = scope
+  
+  def __repr__(self, indent=0):
+    param = "(" + ", ".join([ str(p) for p in self.param ]) + ")"
+    return " " * indent + f"{self.data_type} {self.name}{param}\n{self.body.__repr__(indent=indent)}"
 
 class CompoundStatement:
   def __init__(self, body):
