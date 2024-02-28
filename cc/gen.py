@@ -8,11 +8,7 @@ class Gen:
     
     self.emit('main:')
     self.emit('enter 1')
-    self.emit('const 5')
-    self.emit('const 6')
-    self.emit('const 7')
     self.emit('call program')
-    self.emit('free 3')
     self.emit('leave 1')
     self.emit('int 1')
   
@@ -24,18 +20,29 @@ class Gen:
     self.emit(f'{node.name}:')
     self.emit(f'enter {node.scope.size // 4}')
     self.statement(node.body)
-    self.emit('int 2')
     self.emit('leave')
     self.emit('ret')
   
   def statement(self, node):
     if isinstance(node, VarStatement):
-      return
+      pass
+    elif isinstance(node, PrintStatement):
+      self.print(node)
     elif isinstance(node, ExpressionStatement):
       self.expression(node.body)
     elif isinstance(node, CompoundStatement):
       for statement in node.body:
         self.statement(statement)
+    else:
+      raise Exception("unknown")
+  
+  def print(self, node):
+    self.expression(node.body)
+    
+    if node.print_type == "print_int":
+      self.emit("int 2")
+    elif node.print_type == "print_char":
+      self.emit("int 3")
     else:
       raise Exception("unknown")
   

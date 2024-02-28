@@ -43,7 +43,6 @@ class Scope:
     self.param_size += size
     
     return True
-    
   
   def insert(self, var):
     if self.find(var.name):
@@ -179,6 +178,14 @@ class Function:
     param = "(" + ", ".join([ str(p) for p in self.param ]) + ")"
     return " " * indent + f"{self.data_type} {self.name}{param}\n{self.body.__repr__(indent=indent)}"
 
+class PrintStatement:
+  def __init__(self, print_type, body):
+    self.print_type = print_type
+    self.body = body
+  
+  def __repr__(self, indent=0):
+    return " " * indent + f"{self.print_type} {self.body}"
+
 class CompoundStatement:
   def __init__(self, body):
     self.body = body
@@ -292,6 +299,15 @@ class AccessNode:
   
   def __repr__(self):
     return f'{self.base}.{self.var.name}'
+
+class CallNode:
+  def __init__(self, name, arg):
+    self.name = name
+    self.arg = arg
+  
+  def __repr__(self):
+    arg = "(" + ", ".join([ str(arg) for a in self.arg ]) + ")"
+    return f"{self.name}({arg})"
 
 class ConstantNode:
   def __init__(self, value, data_type):

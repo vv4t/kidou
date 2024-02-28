@@ -89,9 +89,24 @@ class Parse:
   
   def statement(self):
     return find_match([
+      lambda : self.print_statement(),
       lambda : self.var_statement(),
       lambda : self.expression_statement()
     ])
+  
+  def print_statement(self):
+    print_type = find_match([
+      lambda : self.lex.accept("print_int"),
+      lambda : self.lex.accept("print_char")
+    ])
+    
+    if not print_type:
+      return None
+    
+    body = self.expect(self.expression(), "expression")
+    self.lex.expect(';')
+    
+    return PrintStatement(print_type.text, body)
   
   def var_statement(self):
     var = self.var(self.scope)
@@ -146,7 +161,7 @@ class Parse:
     
     while self.lex.accept('['):
       size = self.lex.expect("Number")
-      declarator = Array(declarator, int(size.text))
+      declarator = Array(declarator, size.value)
       self.lex.expect(']')
     
     data_type = DataType(specifier, declarator)
@@ -306,10 +321,14 @@ class Parse:
   def primitive(self):
     if self.lex.match("Number"):
       token = self.lex.pop()
-      return ConstantNode(int(token.text), type_specifier("int"))
+      return ConstantNode(token.value, type_specifier("int"))
     
     if self.lex.match("Identifier"):
       token = self.lex.pop()
+      
+      if self.lex.match("("):
+        return self.call(token)
+      
       return self.name(token)
     
     if self.lex.accept("("):
@@ -318,6 +337,27 @@ class Parse:
       return body
     
     return None
+  
+  def call(self, name):
+    self.lex.expect("(")
+    arg = self.arg()
+    self.lex.expect(")")
+  
+  def arg(self):
+    arg = []
+    
+    expr = self.expression()
+    
+    if not expr:
+      return arg
+    
+    param.append(expr)
+    
+    while expr:
+      var = self.expect(self.expression(), "argument-expression")
+      arg.append(expr)
+    
+    return arg
   
   def name(self, token):
     var = self.scope.find(token.text)

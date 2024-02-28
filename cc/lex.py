@@ -6,11 +6,12 @@ class TokenError(Exception):
     super().__init__(f'{token.src}:{token.line}: {message}')
 
 class Token:
-  def __init__(self, token_type, text, line=0, src="None"):
+  def __init__(self, token_type, text, line=0, src="None", value=0):
     self.token_type = token_type
     self.text = text
     self.line = line
     self.src = src
+    self.value = value
   
   def __repr__(self):
     return self.text
@@ -88,7 +89,18 @@ class Lex:
   def match_identifier(self):
     match = re.search("^[a-zA-Z_][a-zA-Z0-9_]*", self.text)
     
-    keyword = [ "int", "char", "if", "while", "for", "print", "return", "struct" ]
+    keyword = [
+      "int",
+      "char",
+      "if",
+      "while",
+      "for",
+      "print",
+      "return",
+      "struct",
+      "print_int",
+      "print_char"
+    ]
     
     if match:
       if match.group() in keyword:
@@ -108,6 +120,7 @@ class Lex:
       "<=", ">=", "<", ">",
       "+", "-", "*", "/",
       "&",
+      "'",
       ";", ":"
     ]
     
@@ -121,6 +134,12 @@ class Lex:
     match = re.search("^[0-9]+", self.text)
     
     if match:
-      return Token("Number", match.group(), self.line, self.src)
+      return Token("Number", match.group(), self.line, self.src, value=int(match.group()))
+    
+    match = re.search("^'(.*)'", self.text)
+    
+    if match:
+      c = ord(match.group(1)[0])
+      return Token("Number", match.group(), self.line, self.src, value=c)
     
     return None
