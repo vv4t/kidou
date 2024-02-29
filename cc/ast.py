@@ -82,10 +82,10 @@ class Scope:
 def c_type_check(a, op, b):
   check = False
   
-  if op in ['+', '-', '*', '/', '=' ]:
+  if op != '+':
     check = not isstruct(a) and not isstruct(b) 
   
-  if not check and op in [ '=' ]:
+  if not check and op == '=':
     check = isstruct(a) and isstruct(b) and a.specifier.struct_scope == b.specifier.struct_scope
   
   return check
@@ -209,7 +209,7 @@ class IfStatement:
   
   def __repr__(self, indent=0):
     body = f"\n{self.body.__repr__(indent=indent)}"
-    return " " * indent + f"if ({self.cond})\n{body}"
+    return " " * indent + f"if ({self.condition}){body}"
 
 class CompoundStatement:
   def __init__(self, body):

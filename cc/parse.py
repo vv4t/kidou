@@ -114,7 +114,6 @@ class Parse:
     body = self.expect(self.compound_statement(), "if-statement-body")
     
     node = IfStatement(condition, body)
-    print(node)
     
     return node
   
@@ -260,6 +259,8 @@ class Parse:
   def binop_set(self, set_num):
     op_set = [
       [ "+=", "-=", "*=", "/=", "=" ],
+      [ "||" ],
+      [ "&&" ],
       [ "==", "!=" ],
       [ ">=", "<=", "<", ">" ],
       [ "+", "-" ],

@@ -11,9 +11,7 @@ class Gen:
     self.current_function = None
     self.return_label = None
     
-    self.emit('enter 1')
     self.emit('call program')
-    self.emit('leave')
     self.emit('int 1')
     
     self.unit(parse.node)
@@ -24,12 +22,19 @@ class Gen:
       self.text = self.text.replace(label, str(pos))
   
   def dump(self):
-    label_map = {v: k for k, v in self.label.items()}
+    label_map = {}
+    
+    for k, v in self.label.items():
+      if v not in label_map:
+        label_map[v] = [k]
+      else:
+        label_map[v].append(k)
     
     ip = 0
     for line in self.text.split("\n"):
       if ip in label_map:
-        print(f"  {label_map[ip]}:")
+        line_label = '\n  '.join([ str(label) + ":" for label in label_map[ip] ])
+        print(f"  {line_label}")
       
       print(ip, line)
       ip += 1 + line.count(" ")
@@ -58,6 +63,8 @@ class Gen:
       pass
     elif isinstance(node, PrintStatement):
       self.print(node)
+    elif isinstance(node, IfStatement):
+      self.if_statement(node)
     elif isinstance(node, ReturnStatement):
       self.return_statement(node)
     elif isinstance(node, ExpressionStatement):
@@ -67,6 +74,50 @@ class Gen:
         self.statement(statement)
     else:
       raise Exception("unknown")
+  
+  def if_statement(self, node):
+    label_body = self.label_new()
+    label_end = self.label_new()
+    
+    self.logical_or(node.condition, label_body, label_end)
+    self.emit_label(label_body)
+    self.statement(node.body)
+    self.emit_label(label_end)
+  
+  def logical_or(self, node, label_body, label_end):
+    if isinstance(node, BinopNode) and node.op == '||':
+      label_next = self.label_new()
+      self.logical_or(node.lhs, label_body, label_next)
+      self.emit(f"jmp {label_body}")
+      self.emit_label(label_next)
+      self.logical_or(node.rhs, label_body, label_end)
+    else:
+      self.logical_and(node, label_end)
+  
+  def logical_and(self, node, label_end):
+    if isinstance(node, BinopNode) and node.op == '&&':
+      self.comparison(node.lhs, label_end)
+      self.comparison(node.rhs, label_end)
+    else:
+      self.comparison(node, label_end)
+  
+  def comparison(self, node, label_end):
+    if isinstance(node, BinopNode) and node.op in [ '>', '>=', '<', '<=' ]:
+      self.expression(node.lhs)
+      self.expression(node.rhs)
+      
+      if node.op == ">":
+        self.emit(f'jle {label_end}')
+      elif node.op == ">=":
+        self.emit(f'jlt {label_end}')
+      elif node.op == "<":
+        self.emit(f'jge {label_end}')
+      elif node.op == "<=":
+        self.emit(f'jgt {label_end}')
+    else:
+      self.expression(node)
+      self.emit("const 0")
+      self.emit(f"jeq {label_end}")
   
   def print(self, node):
     self.expression(node.body)
