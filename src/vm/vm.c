@@ -17,6 +17,7 @@ void vm_init(vm_t *vm)
   vm->sp = -1;
   vm->ip = 0;
   vm->status = 0;
+  vm->debug = false;
   
   memset(vm->stack, 0, sizeof(vm->stack));
 }
@@ -215,9 +216,11 @@ void vm_exec(vm_t *vm)
       return;
     }
     
-    // printf(".%s\n", op_text(op));
-    // vm_info(vm);
-    // getchar();
+    if (vm->debug) {
+      printf(".%s\n", op_text(op));
+      vm_info(vm);
+      getchar();
+    }
   }
 }
 

@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include <string.h>
 #include "vm.h"
 #include "asm.h"
 
@@ -16,7 +17,13 @@ int main(int argc, char *argv[])
   vm_t vm;
   vm_init(&vm);
   
-  asm_load(&vm, "code.kd");
+  for (int i = 0; i < argc; i++) {
+    if (strcmp(argv[i], "--debug") == 0) {
+      vm.debug = true;
+    }
+  }
+  
+  asm_load(&vm, ".tmp");
   
   vm.status = STATUS_NONE;
   vm.ip = 0;

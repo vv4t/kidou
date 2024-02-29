@@ -1,4 +1,5 @@
 import math
+import sys
 from parse import *
 
 class Gen:
@@ -13,10 +14,11 @@ class Gen:
     
     self.emit('call program')
     self.emit('int 1')
-    
+  
     self.unit(parse.node)
     
-    # self.dump()
+    if '--dump' in sys.argv:
+      self.dump()
     
     for label, pos in self.label.items():
       self.text = self.text.replace(label, str(pos))
@@ -31,7 +33,7 @@ class Gen:
         label_map[v].append(k)
     
     ip = 0
-    for line in self.text.split("\n"):
+    for line in self.text.split("\n")[:-1]:
       if ip in label_map:
         line_label = '\n  '.join([ str(label) + ":" for label in label_map[ip] ])
         print(f"  {line_label}")

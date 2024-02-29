@@ -60,6 +60,8 @@ typedef struct {
   
   int text[128];
   int stack[128];
+  
+  bool debug;
 } vm_t;
 
 void vm_init(vm_t *vm);
