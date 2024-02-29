@@ -179,7 +179,7 @@ void vm_exec(vm_t *vm)
       b = vm_pop(vm);
       a = vm_pop(vm);
       c = vm_next(vm);
-      if (a == b) vm->ip = c;
+      if (a != b) vm->ip = c;
       break;
     case VM_ALLOC:
       a = vm_next(vm);

@@ -1,46 +1,69 @@
-enter 1
-call 39
-leave
+call 62
 int 1
-enter 2
-fp
-const -16
-add
-lw
-fp
-sw
+enter 0
 fp
 const -12
 add
 lw
+const 2
+jge 24
+const 1
 fp
-const 4
+const -16
 add
 sw
+jmp 60
+alloc 1
 fp
-load 2
-fp
-const -24
+const -12
 add
-store 2
-jmp 37
+lw
+const 1
+sub
+call 4
+free 1
+alloc 1
+fp
+const -12
+add
+lw
+const 2
+sub
+call 4
+free 1
+add
+fp
+const -16
+add
+sw
+jmp 60
 leave
 ret
-enter 2
-alloc 2
-const 8888
-const 9999
-call 7
-free 2
-fp
-store 2
-fp
-lw
+enter 0
+alloc 1
+const 1
+call 4
+free 1
 int 2
-fp
+alloc 1
+const 2
+call 4
+free 1
+int 2
+alloc 1
+const 3
+call 4
+free 1
+int 2
+alloc 1
 const 4
-add
-lw
+call 4
+free 1
+int 2
+alloc 1
+const 5
+call 4
+free 1
 int 2
 leave
 ret
