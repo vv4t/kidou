@@ -3,7 +3,7 @@ from parse import Parse
 from gen import Gen
 
 try:
-  lex = Lex("../test.code")
+  lex = Lex("test.code")
   parse = Parse(lex)
   gen = Gen(parse)
   

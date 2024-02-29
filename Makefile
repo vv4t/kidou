@@ -1,9 +1,9 @@
 .PHONY=default run
 
-default: kidou run
+default: vm run
 
-kidou: vm/*.c
-	gcc vm/*.c -o kidou
+vm: src/vm/*.c
+	gcc src/vm/*.c -o vm
 
 run:
 	./kidou

@@ -37,9 +37,5 @@ int main(int argc, char *argv[])
     }
   }
   
-  vm_info(&vm);
-  
-  printf("status: %i\n", vm.status);
-  
   return 0;
 }

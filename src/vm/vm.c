@@ -25,16 +25,16 @@ void vm_info(vm_t *vm)
 {
   printf("[ $ip=0x%03x, $sp=%i, $fp=%i ]\n", vm->ip, vm->sp, vm->fp);
   
-  int row = 1;
+  int row = 4;
   int col = 8;
   
   for (int i = 0; i < row; i++) {
     printf(" 0x%03x - ", i * col);
     for (int j = 0; j < col; j++) {
-      if (i * 4 + j == vm->sp) {
-        printf("(%06x)", vm->stack[i * col + j]);
+      if (i * col + j == vm->sp) {
+        printf("(%08x)", vm->stack[i * col + j]);
       } else {
-        printf(" %06x ", vm->stack[i * col + j]);
+        printf(" %08x ", vm->stack[i * col + j]);
       }
     }
     printf("\n");
@@ -217,6 +217,7 @@ void vm_exec(vm_t *vm)
     
     // printf(".%s\n", op_text(op));
     // vm_info(vm);
+    // getchar();
   }
 }
 

@@ -16,7 +16,7 @@ class Gen:
     
     self.unit(parse.node)
     
-    self.dump()
+    # self.dump()
     
     for label, pos in self.label.items():
       self.text = self.text.replace(label, str(pos))
