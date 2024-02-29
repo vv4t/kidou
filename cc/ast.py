@@ -82,8 +82,7 @@ class Scope:
 def c_type_check(a, op, b):
   check = False
   
-  if op != '+':
-    check = not isstruct(a) and not isstruct(b) 
+  check = not isstruct(a) and not isstruct(b) 
   
   if not check and op == '=':
     check = isstruct(a) and isstruct(b) and a.specifier.struct_scope == b.specifier.struct_scope

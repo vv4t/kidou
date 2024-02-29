@@ -102,7 +102,7 @@ class Gen:
       self.comparison(node, label_end)
   
   def comparison(self, node, label_end):
-    if isinstance(node, BinopNode) and node.op in [ '>', '>=', '<', '<=' ]:
+    if isinstance(node, BinopNode) and node.op in [ '>', '>=', '<', '<=', '==', '!=' ]:
       self.expression(node.lhs)
       self.expression(node.rhs)
       
@@ -114,6 +114,10 @@ class Gen:
         self.emit(f'jge {label_end}')
       elif node.op == "<=":
         self.emit(f'jgt {label_end}')
+      elif node.op == "==":
+        self.emit(f'jne {label_end}')
+      elif node.op == "!=":
+        self.emit(f'jeq {label_end}')
     else:
       self.expression(node)
       self.emit("const 0")

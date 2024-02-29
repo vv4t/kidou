@@ -323,8 +323,6 @@ class Parse:
     while True:
       if self.lex.match('['):
         base = self.index(base)
-      elif self.lex.match('('):
-        return self.call(base)
       elif self.lex.match('.'):
         base = self.access(base)
       elif self.lex.match('->'):
