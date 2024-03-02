@@ -1,0 +1,82 @@
+call 54
+int 1
+enter 2
+fp
+const -24
+add
+lw
+fp
+const -16
+add
+lw
+add
+fp
+sw
+fp
+const -24
+add
+const 4
+add
+lw
+fp
+const -16
+add
+const 4
+add
+lw
+add
+fp
+const 4
+add
+sw
+fp
+load 2
+fp
+const -32
+add
+store 2
+jmp 52
+leave
+ret
+enter 6
+const 3
+fp
+sw
+const 4
+fp
+const 4
+add
+sw
+fp
+load 2
+fp
+const 8
+add
+store 2
+alloc 2
+fp
+load 2
+fp
+const 8
+add
+load 2
+call 4
+free 4
+fp
+const 16
+add
+store 2
+fp
+const 16
+add
+lw
+int 2
+fp
+const 16
+add
+const 4
+add
+lw
+int 2
+leave
+ret

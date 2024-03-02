@@ -1,17 +1,28 @@
-int fib(int n)
+struct vec2 {
+  int x;
+  int y;
+};
+
+struct vec2 vec2_add(struct vec2 a, struct vec2 b)
 {
-  if (n < 2) {
-    return 1;
-  }
-  
-  return fib(n - 1) + fib(n - 2);
+  struct vec2 c;
+  c.x = a.x + b.x;
+  c.y = a.y + b.y;
+  return c;
 }
 
 int program()
 {
-  print_int fib(1);
-  print_int fib(2);
-  print_int fib(3);
-  print_int fib(4);
-  print_int fib(5);
+  struct vec2 a;
+  a.x = 3;
+  a.y = 4;
+  
+  struct vec2 b;
+  b = a;
+  
+  struct vec2 c;
+  c = vec2_add(a, b);
+  
+  print_int c.x;
+  print_int c.y;
 }

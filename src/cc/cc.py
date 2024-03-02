@@ -11,7 +11,7 @@ try:
   parse = Parse(lex)
   gen = Gen(parse)
   
-  f = open(".tmp", "w")
+  f = open("a.out", "w")
   f.write(gen.text)
   f.close()
 except TokenError as e:

@@ -12,7 +12,7 @@ class Gen:
     self.current_function = None
     self.return_label = None
     
-    self.emit('call program')
+    self.emit('call .program')
     self.emit('int 1')
   
     self.unit(parse.node)
@@ -33,12 +33,14 @@ class Gen:
         label_map[v].append(k)
     
     ip = 0
+    
     for line in self.text.split("\n")[:-1]:
       if ip in label_map:
         line_label = '\n  '.join([ str(label) + ":" for label in label_map[ip] ])
         print(f"  {line_label}")
       
-      print(ip, line)
+      print(hex(ip), line)
+      
       ip += 1 + line.count(" ")
   
   def unit(self, node):
@@ -46,7 +48,7 @@ class Gen:
       self.function(function)
   
   def function(self, node):
-    self.emit_label(node.name)
+    self.emit_label(f".{node.name}")
     self.emit(f'enter {math.ceil(node.scope.size / 4)}')
     
     self.current_function = node
@@ -175,7 +177,7 @@ class Gen:
     for arg in node.arg:
       self.expression(arg)
     
-    self.emit(f"call {node.function.name}")
+    self.emit(f"call .{node.function.name}")
     
     arg_size = math.ceil(node.function.scope.param_size / 4)
     if arg_size > 0:

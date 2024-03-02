@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
     }
   }
   
-  asm_load(&vm, ".tmp");
+  asm_load(&vm, "a.out");
   
   vm.status = STATUS_NONE;
   vm.ip = 0;
