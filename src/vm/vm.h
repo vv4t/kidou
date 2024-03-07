@@ -58,7 +58,7 @@ typedef struct {
   
   int status;
   
-  int text[128];
+  int text[512];
   int stack[128];
   
   bool debug;

@@ -2,29 +2,120 @@ from ast import *
 from helper import find_match
 from lex import TokenError
 
+class ParamScope:
+  def __init__(self):
+    self.var = {}
+    self.size = 0
+  
+  def insert(self, var):
+    if self.find(var.name):
+      return None
+    
+    self.var[var.name] = var
+    size = sizeof(var.data_type)
+    align = min(size, 4)
+    size = max(sizeof(var.data_type), align)
+    self.size = math.ceil(self.size / align) * align
+    var.pos = -8 - self.size - size
+    self.size += size
+    
+    return self.var[var.name]
+  
+  def find(self, name):
+    if name in self.var:
+      return self.var[name]
+    
+    return None
+
+class LocalScope:
+  def __init__(self, parent):
+    self.var = {}
+    self.parent = parent
+    self.size = 0
+  
+  def insert(self, var):
+    if self.find(var.name):
+      return None
+    
+    self.var[var.name] = var
+    
+    if not isfunction(var.data_type):
+      size = sizeof(var.data_type)
+      align = min(size, 4)
+      self.size = math.ceil(self.size / align) * align
+      var.pos = self.size
+      self.size += size
+    
+    return self.var[var.name]
+  
+  def find(self, name):
+    if name in self.var:
+      return self.var[name]
+    
+    if self.parent:
+      return self.parent.find(name)
+    
+    return None
+  
+  def flush(self):
+    self.var = {}
+
+class Context:
+  def __init__(self):
+    self.var = {}
+    self.scope_global = LocalScope(None)
+    self.function = None
+    self.struct = {}
+  
+  def insert_struct(self, name, struct):
+    if self.find_struct(name):
+      return None
+    
+    self.struct[name] = struct
+
+  def find_struct(self, name):
+    if name not in self.struct:
+      return None
+    
+    return self.struct[name]
+
+  def insert_global(self, var):
+    if self.find(var.name):
+      return None
+    
+    return self.scope_global.insert(var)
+  
+  def insert_local(self, var):
+    if self.find(var.name):
+      return None
+    
+    return self.function.body.scope.insert(var)
+  
+  def find(self, name):
+    if self.function:
+      return (
+        self.scope_global.find(name) or
+        self.function.data_type.declarator.scope_param.find(name) or
+        self.function.body.scope.find(name)
+      )
+    
+    return self.scope_global.find(name)
+
 class Parse:
   def __init__(self, lex):
     self.lex = lex
-    self.scope = Scope()
-    self.node = self.unit()
+    self.context = Context()
+    self.unit()
   
   def unit(self):
-    function = []
-    var = []
-    
-    match = self.function_or_specifier()
+    match = self.external_declaration()
     
     while match:
-      if isinstance(match, Function):
-        function.append(match)
-      
-      match = self.function_or_specifier()
+      match = self.external_declaration()
     
     self.lex.expect("EOF")
-    
-    return Unit(function)
   
-  def function_or_specifier(self):
+  def external_declaration(self):
     specifier = self.specifier()
     
     if not specifier:
@@ -33,66 +124,39 @@ class Parse:
     if self.lex.accept(';'):
       return specifier
     
-    declarator = None
+    var = self.declarator(specifier)
     
-    while self.lex.accept('*'):
-      declarator = Pointer(declarator)
+    if not self.context.insert_global(var):
+      raise TokenError(self.lex.token, f"redefinition of '{var.name}'")
     
-    data_type = DataType(specifier, declarator)
+    if not isfunction(var.data_type):
+      self.lex.expect(';')
+      return var
     
-    name = self.lex.expect("Identifier")
+    if self.lex.accept(';'):
+      return var
     
-    scope = Scope(parent=self.scope)
+    self.context.function = var
     
-    self.lex.expect('(')
-    param = self.param(scope)
-    self.lex.expect(')')
+    var.body = FunctionBody(LocalScope(None))
+    var.body.body = self.expect(self.compound_statement(), "compound-statement")
     
-    function = Function(data_type, name.text, param, None, scope)
-    self.scope.insert_function(function)
-    
-    self.scope = scope
-    self.return_type = data_type
-    function.body = self.expect(self.compound_statement(), "compound-statement")
-    self.return_type = None
-    self.scope = scope.parent
-    
-    return function
-  
-  def param(self, scope):
-    param = []
-    
-    var = self.var(scope)
-    
-    if not var:
-      return param
-    
-    param.append(var)
-    
-    while self.lex.accept(','):
-      var = self.expect(self.var(scope), "parameter-declaration")
-      param.append(var)
-    
-    for put_var in reversed(param):
-      if not scope.insert_param(put_var):
-        raise TokenError(self.lex.token, f"redefinition of '{put_var.name}'")
-    
-    return param
+    return var
   
   def compound_statement(self):
-    if self.lex.accept('{'):
-      body = []
+    if not self.lex.accept('{'):
+      return None
+    
+    body = []
+    statement = self.statement()
+    
+    while statement:
+      body.append(statement)
       statement = self.statement()
-      
-      while statement:
-        body.append(statement)
-        statement = self.statement()
-      
-      self.lex.expect('}')
-      
-      return CompoundStatement(body)
-    else:
-      return CompoundStatement([ self.expect(self.statement(), "statement") ])
+    
+    self.lex.expect('}')
+    
+    return CompoundStatement(body)
   
   def statement(self):
     return find_match([
@@ -100,7 +164,8 @@ class Parse:
       lambda : self.return_statement(),
       lambda : self.print_statement(),
       lambda : self.var_statement(),
-      lambda : self.expression_statement()
+      lambda : self.expression_statement(),
+      lambda : self.compound_statement()
     ])
   
   def if_statement(self):
@@ -111,7 +176,9 @@ class Parse:
     condition = self.expect(self.expression(), "expression")
     self.lex.expect(")")
     
+    self.scope_fork()
     body = self.expect(self.compound_statement(), "if-statement-body")
+    self.scope_join()
     
     node = IfStatement(condition, body)
     
@@ -121,16 +188,18 @@ class Parse:
     if not self.lex.accept("return"):
       return None
     
+    return_type = base_type(self.context.function.data_type)
+    
     if self.lex.accept(';'):
-      if self.return_type:
-        raise TokenError(self.lex.token, f"return-statement with no value in function returning '{self.return_type}'")
+      if return_type:
+        raise TokenError(self.lex.token, f"return-statement with no value in function returning '{return_type}'")
       
       return ReturnStatement(None)
     else:
       body = self.expect(self.expression(), "expression")
       
-      if not c_type_check(body.data_type, '=', self.return_type):
-        raise TokenError(self.lex.token, f"incompatible expression type '{body.data_type}' for return type '{self.return_type}'")
+      if not c_type_check(body.data_type, '=', return_type):
+        raise TokenError(self.lex.token, f"incompatible expression type '{body.data_type}' for return type '{return_type}'")
       
       self.lex.expect(';')
       
@@ -152,13 +221,13 @@ class Parse:
     return PrintStatement(print_type.text, body)
   
   def var_statement(self):
-    var = self.var(self.scope)
+    var = self.var()
     
     if not var:
       return None
     
     if var.name:
-      if not self.scope.insert(var):
+      if not self.context.insert_local(var):
         raise TokenError(self.lex.token, f"redefinition of '{var.name}'")
     
     self.lex.expect(';')
@@ -175,7 +244,7 @@ class Parse:
     
     return ExpressionStatement(expression)
   
-  def var(self, scope):
+  def var(self):
     specifier = self.specifier()
     
     if not specifier:
@@ -203,17 +272,41 @@ class Parse:
     else:
       return None
     
-    while self.lex.accept('['):
-      size = self.lex.expect("Number")
-      declarator = Array(declarator, size.value)
-      self.lex.expect(']')
+    if self.lex.accept('('):
+      param = self.param()
+      self.lex.expect(')')
+      
+      scope_param = ParamScope()
+      for p in reversed(param):
+        if self.context.find(p) or not scope_param.insert(p):
+          raise TokenError(self.lex.token, f"redefinition of '{p.name}'")
+      
+      declarator = FunctionType(declarator, param, scope_param)
+    else:
+      while self.lex.accept('['):
+        size = self.lex.expect("Number")
+        declarator = Array(declarator, size.value)
+        self.lex.expect(']')
     
     data_type = DataType(specifier, declarator)
     
-    if sizeof(data_type) == 0:
-      raise TokenError(name, f"aggregate '{data_type} {name}' has incomplete type and cannot be defined") 
-    
     return Var(data_type, name.text)
+  
+  def param(self):
+    param = []
+    
+    var = self.var()
+    
+    if not var:
+      return param
+    
+    param.append(var)
+    
+    while self.lex.accept(','):
+      var = self.expect(self.var(), "parameter-declaration")
+      param.append(var)
+    
+    return param
   
   def specifier(self):
     name = find_match([
@@ -229,23 +322,26 @@ class Parse:
     
     if name.text == "struct":
       struct_name = self.lex.expect("Identifier")
-      struct_scope = self.scope.find_struct(struct_name.text)
+      struct_scope = self.context.find_struct(struct_name.text)
       
       if not struct_scope:
-        struct_scope = Scope(name=struct_name.text)
-        self.scope.insert_struct(struct_scope)
+        struct_scope = LocalScope(None)
+        self.context.insert_struct(struct_name.text, struct_scope)
       
       if self.lex.accept("{"):
         if struct_scope.size > 0:
           raise TokenError(struct_name, "redefinition of 'struct {struct_name}'")
         
-        var = self.var(struct_scope)
+        var = self.var()
         
         while var:
           self.lex.expect(';')
-          struct_scope.insert(var)
-          var = self.var(struct_scope)
+          
+          if not struct_scope.insert(var):
+            raise TokenError(self.lex.token, f"redefinition of '{var.name}'")
         
+          var = self.var()
+          
         self.lex.expect("}")
     
     return Specifier(name.text, struct_scope)
@@ -323,14 +419,16 @@ class Parse:
     while True:
       if self.lex.match('['):
         base = self.index(base)
+      elif self.lex.match('('):
+        return self.call(base)
       elif self.lex.match('.'):
-        base = self.access(base)
+        base = self.access(base, True)
       elif self.lex.match('->'):
-        base = self.access(base, direct=False)
+        base = self.access(base, False)
       else:
         return base
   
-  def access(self, base, direct=True):
+  def access(self, base, direct):
     if direct:
       self.lex.expect(".")
     else:
@@ -371,10 +469,6 @@ class Parse:
     
     if self.lex.match("Identifier"):
       token = self.lex.pop()
-      
-      if self.lex.match('('):
-        return self.call(token)
-      
       return self.name(token)
     
     if self.lex.accept("("):
@@ -384,27 +478,25 @@ class Parse:
     
     return None
   
-  def call(self, name):
-    function = self.scope.find_function(name.text)
-    
-    if not function:
-      raise TokenError(name, f"function '{name}' is not defined")
+  def call(self, base):
+    if not isfunction(base.data_type):
+      raise TokenError(self.lex.token, f"cannot call non-function '{base}'")
     
     self.lex.expect("(")
     arg = self.arg()
     self.lex.expect(")")
     
-    if len(arg) < len(function.param):
-      raise TokenError(name, f"too few arguments to function '{function.__repr__(show_body=false)}'")
+    if len(arg) < len(base.data_type.declarator.param):
+      raise TokenError(self.lex.token, f"too few arguments to function '{base}'")
     
-    if len(arg) > len(function.param):
-      raise TokenError(name, f"too many arguments to function '{function.__repr__(show_body=False)}'")
+    if len(arg) > len(base.data_type.declarator.param):
+      raise TokenError(self.lex.token, f"too many arguments to function '{base}'")
     
-    for a, b in zip(arg, function.param):
+    for a, b in zip(arg, base.data_type.declarator.param):
       if not c_type_check(a.data_type, '=', b.data_type):
-        raise TokenError(name, f"incompatible type for argument '{b.name}' of '{function.__repr__(show_body=False)}'") 
+        raise TokenError(self.lex.token, f"incompatible type for argument '{b.name}' of '{base}'") 
     
-    return CallNode(function, arg, function.data_type)
+    return CallNode(base, arg, base_type(base.data_type))
   
   def arg(self):
     arg = []
@@ -423,7 +515,7 @@ class Parse:
     return arg
   
   def name(self, token):
-    var = self.scope.find(token.text)
+    var = self.context.find(token.text)
     
     if not var:
       raise TokenError(token, f"name '{token.text}' is not defined")

@@ -1,83 +1,19 @@
 import math
 
-class Scope:
-  def __init__(self, parent=None, name=""):
-    self.size = 0
-    self.param_size = 0
-    self.function = {}
-    self.struct = {}
-    self.var = {}
-    self.name = name
-    self.parent = parent
+def sizeof(data_type):
+  specifier_size = { "int": 4, "char": 1 }
   
-  def insert_struct(self, struct_scope):
-    if self.find_struct(struct_scope.name):
-      return None
+  if not data_type.declarator:
+    if isstruct(data_type):
+      return data_type.specifier.struct_scope.size
     
-    self.struct[struct_scope.name] = struct_scope
-  
-  def find_struct(self, name):
-    if name not in self.struct:
-      if self.parent:
-        return self.parent.find_struct(name)
-      
-      return None
-    
-    return self.struct[name]
-  
-  def insert_function(self, function):
-    if self.find_function(function.name):
-      return False
-    
-    self.function[function.name] = function
-    
-    return True
-  
-  def find_function(self, name):
-    if name not in self.function:
-      if self.parent:
-        return self.parent.find_function(name)
-      
-      return None
-    
-    return self.function[name]
-  
-  def insert_param(self, var):
-    if self.find(var.name):
-      return False
-    
-    size = sizeof(var.data_type)
-    align = 4
-    
-    self.var[var.name] = var
-    self.param_size = math.ceil(self.param_size / align) * align
-    var.pos = -8 - self.param_size - size
-    self.param_size += size
-    
-    return True
-  
-  def insert(self, var):
-    if self.find(var.name):
-      return False
-    
-    size = sizeof(var.data_type)
-    align = min(size, 4)
-    
-    self.var[var.name] = var
-    self.size = math.ceil(self.size / align) * align
-    var.pos = self.size
-    self.size += size
-    
-    return True
-  
-  def find(self, name):
-    if name not in self.var:
-      if self.parent:
-        return self.parent.find(name)
-      
-      return None
-    
-    return self.var[name]
+    return specifier_size[data_type.specifier.name]
+  elif isinstance(data_type.declarator, Array):
+    return data_type.declarator.size * sizeof(DataType(data_type.specifier, data_type.declarator.base))
+  elif isinstance(data_type.declarator, Pointer):
+    return specifier_size["int"]
+  else:
+    raise Exception("unknown")
 
 def c_type_check(a, op, b):
   check = False
@@ -97,6 +33,9 @@ def islvalue(node):
     (isinstance(node, UnaryNode) and node.op == '*')
   )
 
+def isfunction(data_type):
+  return isinstance(data_type.declarator, FunctionType)
+
 def ispointer(data_type):
   return isinstance(data_type.declarator, Pointer)
 
@@ -115,26 +54,13 @@ def base_type(data_type):
   else:
     return DataType(data_type.specifier, data_type.declarator.base)
 
-def sizeof(data_type):
-  specifier_size = { "int": 4, "char": 1 }
-  
-  if not data_type.declarator:
-    if isstruct(data_type):
-      return data_type.specifier.struct_scope.size
-    
-    return specifier_size[data_type.specifier.name]
-  elif isinstance(data_type.declarator, Array):
-    return data_type.declarator.size * sizeof(DataType(data_type.specifier, data_type.declarator.base))
-  elif isinstance(data_type.declarator, Pointer):
-    return specifier_size["int"]
-  else:
-    raise Exception("unknown")
-
 def declarator_with_name(declarator, name):
   if not declarator:
     return name
   if isinstance(declarator, Array):
     return f"{declarator_with_name(declarator.base, name)}[{declarator.size}]"
+  elif isinstance(declarator, FunctionType):
+    return f"{declarator_with_name(declarator.base, name)}" + "(" + ", ".join([ str(p) for p in declarator.param ]) + ")"
   elif isinstance(declarator, Pointer):
     return f"*{declarator_with_name(declarator.base, name)}"
   else:
@@ -168,23 +94,6 @@ class Unit:
   
   def __repr__(self, indent=0):
     return (" " * indent + "\n").join([ function.__repr__(indent=indent+2) for function in self.function ])
-
-class Function:
-  def __init__(self, data_type, name, param, body, scope):
-    self.data_type = data_type
-    self.name = name
-    self.param = param
-    self.body = body
-    self.scope = scope
-  
-  def __repr__(self, indent=0, show_body=True):
-    param = "(" + ", ".join([ str(p) for p in self.param ]) + ")"
-    body = f"\n{self.body.__repr__(indent=indent)}" if show_body else ""
-    
-    if self.body:
-      return " " * indent + f"{self.data_type} {self.name}{param}{body}"
-    else:
-      return " " * indent + f"{self.data_type} {self.name}{param};"
 
 class ReturnStatement:
   def __init__(self, body):
@@ -234,11 +143,17 @@ class ExpressionStatement:
   def __repr__(self, indent=0):
     return " " * indent + str(self.body) + ";"
 
+class FunctionBody:
+  def __init__(self, scope):
+    self.scope = scope
+    self.body = None
+
 class Var:
   def __init__(self, data_type, name):
     self.pos = 0
     self.data_type = data_type
     self.name = name
+    self.body = None
   
   def __repr__(self):
     return f"{self.data_type.specifier} {declarator_with_name(self.data_type.declarator, self.name)}"
@@ -264,6 +179,17 @@ class Specifier:
       return f"{self.name} {self.struct_scope.name}"
     else:
       return f"{self.name}"
+
+class FunctionType:
+  def __init__(self, base, param, scope_param):
+    self.base = base
+    self.param = param
+    self.scope_param = scope_param
+  
+  def __repr__(self, indent=0, show_body=True):
+    param = "(" + ", ".join([ str(p) for p in self.param ]) + ")"
+    base = str(self.base) if self.base else ""
+    return f"{base}{param}"
 
 class Pointer:
   def __init__(self, base):
@@ -325,14 +251,14 @@ class AccessNode:
     return f'{self.base}.{self.var.name}'
 
 class CallNode:
-  def __init__(self, function, arg, data_type):
-    self.function = function
+  def __init__(self, base, arg, data_type):
+    self.base = base
     self.arg = arg
     self.data_type = data_type
   
   def __repr__(self):
     arg = "(" + ", ".join([ str(a) for a in self.arg ]) + ")"
-    return f"{self.function.name}{arg}"
+    return f"{base}{arg}"
 
 class ConstantNode:
   def __init__(self, value, data_type):

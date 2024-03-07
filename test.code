@@ -1,28 +1,21 @@
-struct vec2 {
-  int x;
-  int y;
+struct thing {
+  int a;
+  int b;
 };
 
-struct vec2 vec2_add(struct vec2 a, struct vec2 b)
+struct thing get_thing()
 {
-  struct vec2 c;
-  c.x = a.x + b.x;
-  c.y = a.y + b.y;
-  return c;
+  struct thing a;
+  a.a = 3;
+  a.b = 4;
+  return a;
 }
 
 int program()
 {
-  struct vec2 a;
-  a.x = 3;
-  a.y = 4;
+  struct thing a;
+  a = get_thing();
   
-  struct vec2 b;
-  b = a;
-  
-  struct vec2 c;
-  c = vec2_add(a, b);
-  
-  print_int c.x;
-  print_int c.y;
+  print_int a.a;
+  print_int a.b;
 }

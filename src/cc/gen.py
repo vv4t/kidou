@@ -15,7 +15,7 @@ class Gen:
     self.emit('call .program')
     self.emit('int 1')
   
-    self.unit(parse.node)
+    self.unit()
     
     if '--dump' in sys.argv:
       self.dump()
@@ -43,18 +43,21 @@ class Gen:
       
       ip += 1 + line.count(" ")
   
-  def unit(self, node):
-    for function in node.function:
-      self.function(function)
+  def unit(self):
+    for var in self.parse.context.scope_global.var.values():
+      if isfunction(var.data_type):
+        self.function(var)
   
   def function(self, node):
+    self.current_function = node
+    
     self.emit_label(f".{node.name}")
-    self.emit(f'enter {math.ceil(node.scope.size / 4)}')
+    self.emit(f'enter {math.ceil(node.body.scope.size / 4)}')
     
     self.current_function = node
     self.return_label = self.label_new()
     
-    self.statement(node.body)
+    self.statement(node.body.body)
     self.emit_label(self.return_label)
     self.emit('leave')
     self.emit('ret')
@@ -142,15 +145,15 @@ class Gen:
   def return_statement(self, node):
     if node.body:
       self.expression(node.body)
-      return_pos = -8 - self.current_function.scope.param_size - sizeof(self.current_function.data_type)
+      return_pos = -8 - self.current_function.data_type.declarator.scope_param.size - sizeof(base_type(self.current_function.data_type))
       self.emit("fp")
       self.emit(f"const {return_pos}")
       self.emit("add")
       
-      if sizeof(self.current_function.data_type) <= 4:
+      if sizeof(base_type(self.current_function.data_type)) <= 4:
         self.emit("sw")
       else:
-        self.emit(f"store {sizeof(self.current_function.data_type) // 4}")
+        self.emit(f"store {sizeof(base_type(self.current_function.data_type)) // 4}")
     
     self.emit(f"jmp {self.return_label}")
   
@@ -169,7 +172,7 @@ class Gen:
       raise Exception("unknown")
   
   def call(self, node):
-    return_size = sizeof(node.function.data_type)
+    return_size = sizeof(base_type(node.base.data_type))
     
     if return_size > 0:
       self.emit(f"alloc {math.ceil(return_size / 4)}")
@@ -177,9 +180,12 @@ class Gen:
     for arg in node.arg:
       self.expression(arg)
     
-    self.emit(f"call .{node.function.name}")
+    if isinstance(node.base, NameNode):
+      self.emit(f"call .{node.base.var.name}")
+    else:
+      raise Exception("unknown")
     
-    arg_size = math.ceil(node.function.scope.param_size / 4)
+    arg_size = math.ceil(node.base.data_type.declarator.scope_param.size / 4)
     if arg_size > 0:
       self.emit(f'free {arg_size}')
   
