@@ -100,8 +100,7 @@ class Gen:
     label_body = self.label_new()
     label_end = self.label_new()
     
-    if node.init:
-      self.expression(node.init)
+    self.statement(node.init)
     
     self.emit_label(label_condition)
     if node.condition:

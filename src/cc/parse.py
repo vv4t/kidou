@@ -66,17 +66,16 @@ class Parse:
   def for_statement(self):
     if not self.lex.accept("for"):
       return None
+    self.context.scope_fork()
     
     self.lex.expect("(")
-    init = self.expression()
-    self.lex.expect(';')
+    init = self.var_statement() or self.expression_statement() or self.lex.expect(';')
     condition = self.expect(self.expression(), "expression")
     self.lex.expect(';')
     step = self.expression()
     self.lex.expect(")")
-    
-    self.context.scope_fork()
     body = self.expect(self.compound_statement(), "for-statement-body")
+    
     self.context.scope_join()
     
     node = ForStatement(init, condition, step, body)

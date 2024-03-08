@@ -5,8 +5,7 @@ struct thing {
 
 void main()
 {
-  int i;
-  for (i = 0; i < 20; i += 1) {
+  for (int i = 0; i < 20; i += 1) {
     if (i < 5) {
       print_int 5;
     } else if (i < 10) {
