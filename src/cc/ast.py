@@ -234,13 +234,16 @@ class WhileStatement:
     return " " * indent + f"while ({self.condition}){body}"
 
 class IfStatement:
-  def __init__(self, condition, body):
+  def __init__(self, condition, body, else_if):
     self.condition = condition
     self.body = body
+    self.else_if = else_if
   
-  def __repr__(self, indent=0):
+  def __repr__(self, indent=0, is_else=False):
+    show_else = "else " if is_else else ""
     body = f"\n{self.body.__repr__(indent=indent)}"
-    return " " * indent + f"if ({self.condition}){body}"
+    else_if = "\n" + self.else_if.__repr__(indent=indent, is_else=True) if self.else_if else ""
+    return " " * indent + show_else + f"if ({self.condition}){body}{else_if}"
 
 class CompoundStatement:
   def __init__(self, body):

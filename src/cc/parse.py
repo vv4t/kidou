@@ -111,7 +111,12 @@ class Parse:
     body = self.expect(self.compound_statement(), "if-statement-body")
     self.context.scope_join()
     
-    node = IfStatement(condition, body)
+    else_if = None
+    
+    if self.lex.accept("else"):
+      else_if = self.if_statement() or self.expect(self.statement(), "else-statement")
+    
+    node = IfStatement(condition, body, else_if)
     
     return node
   

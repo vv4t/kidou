@@ -94,6 +94,7 @@ class Lex:
       "int",
       "char",
       "if",
+      "else",
       "while",
       "for",
       "print",

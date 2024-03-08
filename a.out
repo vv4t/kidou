@@ -1,23 +1,42 @@
 call 4
 int 1
-enter 2
-const 4
+enter 1
+const 0
 fp
 sw
-const 3
-fp
-const 4
-add
-sw
 fp
 lw
-fp
-const 4
-add
-lw
-jge 30
+const 20
+jge 65
 fp
 lw
+const 5
+jge 28
+const 5
 int 2
+jmp 56
+fp
+lw
+const 10
+jge 40
+const 10
+int 2
+jmp 56
+fp
+lw
+const 15
+jge 52
+const 15
+int 2
+jmp 56
+const 999
+int 2
+fp
+lw
+const 1
+add
+fp
+sw
+jmp 10
 leave
 ret

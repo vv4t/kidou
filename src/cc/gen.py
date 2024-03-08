@@ -128,14 +128,28 @@ class Gen:
     self.emit(f"jmp {label_condition}")
     self.emit_label(label_end)
   
-  def if_statement(self, node):
+  def if_statement(self, node, label_else_end=None):
     label_body = self.label_new()
-    label_end = self.label_new()
+    label_end = self.label_new() if not label_else_end else label_else_end
     
-    self.condition(node.condition, label_body, label_end)
+    if node.else_if:
+      label_else = self.label_new()
+    
+    self.condition(node.condition, label_body, label_else)
     self.emit_label(label_body)
     self.statement(node.body)
-    self.emit_label(label_end)
+    
+    if node.else_if:
+      self.emit(f"jmp {label_end}")
+      self.emit_label(label_else)
+      
+      if isinstance(node.else_if, IfStatement):
+        self.if_statement(node.else_if, label_else_end=label_end)
+      else:
+        self.statement(node.else_if)
+    
+    if not label_else_end:
+      self.emit_label(label_end)
   
   def condition(self, node, label_body, label_end):
     self.logical_or(node, label_body, label_end)
