@@ -1,5 +1,99 @@
 import math
 
+class ScopeParam:
+  def __init__(self):
+    self.var = {}
+    self.size = 0
+  
+  def insert(self, var):
+    if self.find(var.name):
+      return None
+    
+    self.var[var.name] = var
+    size = sizeof(var.data_type)
+    align = min(size, 4)
+    size = max(sizeof(var.data_type), align)
+    self.size = math.ceil(self.size / align) * align
+    var.pos = -8 - self.size - size
+    self.size += size
+    
+    return self.var[var.name]
+  
+  def find(self, name):
+    if name in self.var:
+      return self.var[name]
+    
+    return None
+
+class Scope:
+  def __init__(self, parent=None, param=None, name=""):
+    self.var = {}
+    self.struct = {}
+    self.param = param
+    self.parent = parent
+    self.name = name
+    self.size = parent.size if parent else 0
+  
+  def insert(self, var):
+    if self.find(var.name):
+      return None
+    
+    self.var[var.name] = var
+    
+    if not isfunction(var.data_type):
+      size = sizeof(var.data_type)
+      align = min(size, 4)
+      self.size = math.ceil(self.size / align) * align
+      var.pos = self.size
+      self.size += size
+    
+    return self.var[var.name]
+  
+  def find(self, name):
+    return (
+      (self.param and self.param.find(name)) or
+      (name in self.var and self.var[name]) or
+      (self.parent and self.parent.find(name))
+    )
+  
+  def insert_struct(self, name, struct):
+    if self.find_struct(name):
+      return None
+    
+    self.struct[name] = struct
+
+  def find_struct(self, name):
+    return (
+      (name in self.struct and self.struct[name]) or
+      (self.parent and self.parent.find_struct(name))
+    )
+
+class Context:
+  def __init__(self):
+    self.scope_global = Scope()
+    self.scope = self.scope_global
+    self.function = None
+  
+  def bind(self, function):
+    self.scope = function.body.scope
+    self.function = function
+  
+  def unbind(self):
+    self.scope = self.scope_global
+    self.function = None
+  
+  def find(self, name):
+    return self.scope.find(name) or self.scope_global.find(name)
+  
+  def scope_fork(self):
+    self.scope = Scope(parent=self.scope)
+  
+  def scope_join(self):
+    if self.scope:
+      scope = self.scope
+      self.scope = scope.parent
+      self.scope.size = scope.size
+
 def sizeof(data_type):
   specifier_size = { "int": 4, "char": 1 }
   
@@ -18,7 +112,10 @@ def sizeof(data_type):
 def c_type_check(a, op, b):
   check = False
   
-  check = not isstruct(a) and not isstruct(b) 
+  check = (
+    not isstruct(a) and not isstruct(b) and
+    not isvoid(a) and not isvoid(b)
+  )
   
   if not check and op == '=':
     check = isstruct(a) and isstruct(b) and a.specifier.struct_scope == b.specifier.struct_scope
@@ -32,6 +129,9 @@ def islvalue(node):
     isinstance(node, AccessNode) or
     (isinstance(node, UnaryNode) and node.op == '*')
   )
+
+def isvoid(data_type):
+  return data_type.specifier.name == "void" and not data_type.declarator
 
 def isfunction(data_type):
   return isinstance(data_type.declarator, FunctionType)
@@ -109,6 +209,29 @@ class PrintStatement:
   
   def __repr__(self, indent=0):
     return " " * indent + f"{self.print_type} {self.body}"
+
+class ForStatement:
+  def __init__(self, init, condition, step, body):
+    self.init = init
+    self.condition = condition
+    self.step = step
+    self.body = body
+  
+  def __repr__(self, indent=0):
+    init = str(self.init) if self.init else None
+    condition = str(self.condition) if self.condition else None
+    step = str(self.step) if self.step else None
+    body = f"\n{self.body.__repr__(indent=indent)}"
+    return " " * indent + f"for ({self.init}; {self.condition}; {self.step}){body}"
+
+class WhileStatement:
+  def __init__(self, condition, body):
+    self.condition = condition
+    self.body = body
+  
+  def __repr__(self, indent=0):
+    body = f"\n{self.body.__repr__(indent=indent)}"
+    return " " * indent + f"while ({self.condition}){body}"
 
 class IfStatement:
   def __init__(self, condition, body):

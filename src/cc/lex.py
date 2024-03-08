@@ -90,6 +90,7 @@ class Lex:
     match = re.search("^[a-zA-Z_][a-zA-Z0-9_]*", self.text)
     
     keyword = [
+      "void",
       "int",
       "char",
       "if",

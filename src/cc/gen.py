@@ -11,8 +11,9 @@ class Gen:
     self.label = {}
     self.current_function = None
     self.return_label = None
+    self.ax = 0
     
-    self.emit('call .program')
+    self.emit('call .main')
     self.emit('int 1')
   
     self.unit()
@@ -67,9 +68,13 @@ class Gen:
   
   def statement(self, node):
     if isinstance(node, VarStatement):
-      pass
+      self.var_statement(node)
     elif isinstance(node, PrintStatement):
       self.print(node)
+    elif isinstance(node, ForStatement):
+      self.for_statement(node)
+    elif isinstance(node, WhileStatement):
+      self.while_statement(node)
     elif isinstance(node, IfStatement):
       self.if_statement(node)
     elif isinstance(node, ReturnStatement):
@@ -81,15 +86,59 @@ class Gen:
         self.statement(statement)
     else:
       raise Exception("unknown")
+    
+    if self.ax > 0:
+      self.emit(f"free {self.ax}")
+      self.ax = 0
+  
+  def var_statement(self, node):
+    if node.body.name and node.body.body:
+      self.statement(node.body.body)
+  
+  def for_statement(self, node):
+    label_condition = self.label_new()
+    label_body = self.label_new()
+    label_end = self.label_new()
+    
+    if node.init:
+      self.expression(node.init)
+    
+    self.emit_label(label_condition)
+    if node.condition:
+      self.condition(node.condition, label_body, label_end)
+    
+    self.emit_label(label_body)
+    self.statement(node.body)
+    
+    if node.step:
+      self.expression(node.step)
+    
+    self.emit(f"jmp {label_condition}")
+    self.emit_label(label_end)
+  
+  def while_statement(self, node):
+    label_condition = self.label_new()
+    label_body = self.label_new()
+    label_end = self.label_new()
+    
+    self.emit_label(label_condition)
+    self.condition(node.condition, label_body, label_end)
+    self.emit_label(label_body)
+    self.statement(node.body)
+    self.emit(f"jmp {label_condition}")
+    self.emit_label(label_end)
   
   def if_statement(self, node):
     label_body = self.label_new()
     label_end = self.label_new()
     
-    self.logical_or(node.condition, label_body, label_end)
+    self.condition(node.condition, label_body, label_end)
     self.emit_label(label_body)
     self.statement(node.body)
     self.emit_label(label_end)
+  
+  def condition(self, node, label_body, label_end):
+    self.logical_or(node, label_body, label_end)
   
   def logical_or(self, node, label_body, label_end):
     if isinstance(node, BinopNode) and node.op == '||':
@@ -125,10 +174,16 @@ class Gen:
         self.emit(f'jne {label_end}')
       elif node.op == "!=":
         self.emit(f'jeq {label_end}')
+      
+      self.ax -= 2
     else:
       self.expression(node)
+      
       self.emit("const 0")
+      self.ax += 1
+      
       self.emit(f"jeq {label_end}")
+      self.ax -= 2
   
   def print(self, node):
     self.expression(node.body)
@@ -141,19 +196,27 @@ class Gen:
       self.emit("int 4")
     else:
       raise Exception("unknown")
+    
+    self.ax -= 1
   
   def return_statement(self, node):
     if node.body:
+      function_type = self.current_function.data_type
+      param_size = function_type.declarator.scope_param.size 
+      return_size = sizeof(base_type(function_type))
+      
       self.expression(node.body)
-      return_pos = -8 - self.current_function.data_type.declarator.scope_param.size - sizeof(base_type(self.current_function.data_type))
+      return_pos = -8 - param_size - return_size
       self.emit("fp")
       self.emit(f"const {return_pos}")
       self.emit("add")
       
-      if sizeof(base_type(self.current_function.data_type)) <= 4:
+      if return_size <= 4:
         self.emit("sw")
+        self.ax -= 1
       else:
-        self.emit(f"store {sizeof(base_type(self.current_function.data_type)) // 4}")
+        self.emit(f"store {return_size // 4}")
+        self.ax -= return_size // 4
     
     self.emit(f"jmp {self.return_label}")
   
@@ -228,13 +291,15 @@ class Gen:
       raise Exception("unknown")
     
     self.expression(node.pos)
-    size = sizeof(node.data_type)
     
+    size = sizeof(node.data_type)
     if size > 1:
       self.emit(f"const {size}")
       self.emit("mul")
     
     self.emit("add")
+    
+    self.ax -= 1
   
   def access(self, node):
     if node.direct:
@@ -252,6 +317,8 @@ class Gen:
     if node.var.pos != 0:
       self.emit(f"const {node.var.pos}")
       self.emit("add")
+      
+    self.ax += 1
   
   def binop(self, node):
     lhs_type = node.lhs.data_type
@@ -259,6 +326,18 @@ class Gen:
     
     if node.op == '=':
       self.assign(node)
+    elif node.op in [ '<', '>', '<=', '>=', '==', '!=', '&&', '||' ]:
+      label_true = self.label_new()
+      label_false = self.label_new()
+      label_end = self.label_new()
+      
+      self.condition(node, label_true, label_false)
+      self.emit_label(label_true)
+      self.emit("const 1")
+      self.emit(f"jmp {label_end}")
+      self.emit_label(label_false)
+      self.emit("const 0")
+      self.emit_label(label_end)
     else:
       self.expression(node.lhs)
       self.expression(node.rhs)
@@ -271,6 +350,7 @@ class Gen:
       }
       
       self.emit(op_instr_table[node.op])
+      self.ax -= 2
   
   def assign(self, node):
     self.expression(node.rhs)
@@ -278,15 +358,20 @@ class Gen:
     
     if sizeof(node.data_type) == 1:
       self.emit("sb")
+      self.ax -= 2
     elif sizeof(node.data_type) == 4:
       self.emit("sw")
+      self.ax -= 2
     elif isstruct(node.data_type):
       self.emit(f"store {sizeof(node.data_type) // 4}")
+      self.ax -= sizeof(node.data_type) // 4
+      self.ax -= 1
     else:
       raise Exception("unknown")
   
   def constant(self, node):
     self.emit(f'const {node.value}')
+    self.ax += 1
   
   def label_new(self):
     self.num_label += 1

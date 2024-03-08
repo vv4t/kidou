@@ -6,4 +6,5 @@ vm: src/vm/*.c
 	gcc src/vm/*.c -o vm
 
 run:
-	./kidou
+	./cc test/main.c
+	./vm a.out

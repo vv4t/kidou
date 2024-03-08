@@ -2,105 +2,6 @@ from ast import *
 from helper import find_match
 from lex import TokenError
 
-class ParamScope:
-  def __init__(self):
-    self.var = {}
-    self.size = 0
-  
-  def insert(self, var):
-    if self.find(var.name):
-      return None
-    
-    self.var[var.name] = var
-    size = sizeof(var.data_type)
-    align = min(size, 4)
-    size = max(sizeof(var.data_type), align)
-    self.size = math.ceil(self.size / align) * align
-    var.pos = -8 - self.size - size
-    self.size += size
-    
-    return self.var[var.name]
-  
-  def find(self, name):
-    if name in self.var:
-      return self.var[name]
-    
-    return None
-
-class LocalScope:
-  def __init__(self, parent):
-    self.var = {}
-    self.parent = parent
-    self.size = 0
-  
-  def insert(self, var):
-    if self.find(var.name):
-      return None
-    
-    self.var[var.name] = var
-    
-    if not isfunction(var.data_type):
-      size = sizeof(var.data_type)
-      align = min(size, 4)
-      self.size = math.ceil(self.size / align) * align
-      var.pos = self.size
-      self.size += size
-    
-    return self.var[var.name]
-  
-  def find(self, name):
-    if name in self.var:
-      return self.var[name]
-    
-    if self.parent:
-      return self.parent.find(name)
-    
-    return None
-  
-  def flush(self):
-    self.var = {}
-
-class Context:
-  def __init__(self):
-    self.var = {}
-    self.scope_global = LocalScope(None)
-    self.function = None
-    self.struct = {}
-  
-  def insert_struct(self, name, struct):
-    if self.find_struct(name):
-      return None
-    
-    self.struct[name] = struct
-
-  def find_struct(self, name):
-    if name not in self.struct:
-      return None
-    
-    return self.struct[name]
-
-  def insert_global(self, var):
-    if self.find(var.name):
-      return None
-    
-    return self.scope_global.insert(var)
-  
-  def insert_local(self, var):
-    if self.find(var.name):
-      return None
-    
-    return self.function.body.scope.insert(var)
-  
-  def find(self, name):
-    if self.function:
-      return (
-        self.scope_global.find(name) or
-        self.function.data_type.declarator.scope_param.find(name) or
-        self.function.body.scope.find(name)
-      )
-    
-    return self.scope_global.find(name)
-
 class Parse:
   def __init__(self, lex):
     self.lex = lex
@@ -116,18 +17,10 @@ class Parse:
     self.lex.expect("EOF")
   
   def external_declaration(self):
-    specifier = self.specifier()
+    var = self.var(self.context.scope_global)
     
-    if not specifier:
+    if not var:
       return None
-    
-    if self.lex.accept(';'):
-      return specifier
-    
-    var = self.declarator(specifier)
-    
-    if not self.context.insert_global(var):
-      raise TokenError(self.lex.token, f"redefinition of '{var.name}'")
     
     if not isfunction(var.data_type):
       self.lex.expect(';')
@@ -136,10 +29,10 @@ class Parse:
     if self.lex.accept(';'):
       return var
     
-    self.context.function = var
-    
-    var.body = FunctionBody(LocalScope(None))
+    var.body = FunctionBody(Scope(param=var.data_type.declarator.param))
+    self.context.bind(var)
     var.body.body = self.expect(self.compound_statement(), "compound-statement")
+    self.context.unbind()
     
     return var
   
@@ -161,12 +54,50 @@ class Parse:
   def statement(self):
     return find_match([
       lambda : self.if_statement(),
+      lambda : self.while_statement(),
+      lambda : self.for_statement(),
       lambda : self.return_statement(),
       lambda : self.print_statement(),
       lambda : self.var_statement(),
       lambda : self.expression_statement(),
       lambda : self.compound_statement()
     ])
+  
+  def for_statement(self):
+    if not self.lex.accept("for"):
+      return None
+    
+    self.lex.expect("(")
+    init = self.expression()
+    self.lex.expect(';')
+    condition = self.expect(self.expression(), "expression")
+    self.lex.expect(';')
+    step = self.expression()
+    self.lex.expect(")")
+    
+    self.context.scope_fork()
+    body = self.expect(self.compound_statement(), "for-statement-body")
+    self.context.scope_join()
+    
+    node = ForStatement(init, condition, step, body)
+    
+    return node
+  
+  def while_statement(self):
+    if not self.lex.accept("while"):
+      return None
+    
+    self.lex.expect("(")
+    condition = self.expect(self.expression(), "expression")
+    self.lex.expect(")")
+    
+    self.context.scope_fork()
+    body = self.expect(self.compound_statement(), "while-statement-body")
+    self.context.scope_join()
+    
+    node = WhileStatement(condition, body)
+    
+    return node
   
   def if_statement(self):
     if not self.lex.accept("if"):
@@ -176,9 +107,9 @@ class Parse:
     condition = self.expect(self.expression(), "expression")
     self.lex.expect(")")
     
-    self.scope_fork()
+    self.context.scope_fork()
     body = self.expect(self.compound_statement(), "if-statement-body")
-    self.scope_join()
+    self.context.scope_join()
     
     node = IfStatement(condition, body)
     
@@ -221,14 +152,10 @@ class Parse:
     return PrintStatement(print_type.text, body)
   
   def var_statement(self):
-    var = self.var()
+    var = self.var(self.context.scope)
     
     if not var:
       return None
-    
-    if var.name:
-      if not self.context.insert_local(var):
-        raise TokenError(self.lex.token, f"redefinition of '{var.name}'")
     
     self.lex.expect(';')
     
@@ -244,7 +171,7 @@ class Parse:
     
     return ExpressionStatement(expression)
   
-  def var(self):
+  def var(self, scope=None):
     specifier = self.specifier()
     
     if not specifier:
@@ -255,7 +182,16 @@ class Parse:
     if not var:
       if specifier.name != "struct":
         raise TokenError(self.lex.token, f"declaration does not declare anything")
-      return Var(specifier, None)
+      return Var(DataType(specifier, None), None)
+    
+    if isstruct(var.data_type) and sizeof(var.data_type) == 0:
+      raise TokenError(self.lex.token, f"declaring '{var.name}' with incomplete type '{var.data_type}'")
+    
+    if isvoid(var.data_type):
+      raise TokenError(self.lex.token, f"cannot declare void variable '{var.name}'")
+    
+    if scope and not scope.insert(var):
+      raise TokenError(self.lex.token, f"redefinition of '{var.name}'")
     
     return var
   
@@ -276,7 +212,8 @@ class Parse:
       param = self.param()
       self.lex.expect(')')
       
-      scope_param = ParamScope()
+      scope_param = ScopeParam()
+      
       for p in reversed(param):
         if self.context.find(p) or not scope_param.insert(p):
           raise TokenError(self.lex.token, f"redefinition of '{p.name}'")
@@ -290,7 +227,13 @@ class Parse:
     
     data_type = DataType(specifier, declarator)
     
-    return Var(data_type, name.text)
+    var = Var(data_type, name.text)
+    
+    if self.lex.accept('='):
+      value = self.expect(self.expression(), "expression")
+      var.body = ExpressionStatement(self.binop_check(NameNode(var, var.data_type), '=', value))
+    
+    return var
   
   def param(self):
     param = []
@@ -312,6 +255,7 @@ class Parse:
     name = find_match([
       lambda : self.lex.accept("int"),
       lambda : self.lex.accept("char"),
+      lambda : self.lex.accept("void"),
       lambda : self.lex.accept("struct")
     ])
     
@@ -322,25 +266,21 @@ class Parse:
     
     if name.text == "struct":
       struct_name = self.lex.expect("Identifier")
-      struct_scope = self.context.find_struct(struct_name.text)
+      struct_scope = self.context.scope.find_struct(struct_name.text)
       
       if not struct_scope:
-        struct_scope = LocalScope(None)
-        self.context.insert_struct(struct_name.text, struct_scope)
+        struct_scope = Scope(name=struct_name.text)
+        self.context.scope.insert_struct(struct_name.text, struct_scope)
       
       if self.lex.accept("{"):
         if struct_scope.size > 0:
           raise TokenError(struct_name, "redefinition of 'struct {struct_name}'")
         
-        var = self.var()
+        var = self.var(struct_scope)
         
         while var:
           self.lex.expect(';')
-          
-          if not struct_scope.insert(var):
-            raise TokenError(self.lex.token, f"redefinition of '{var.name}'")
-        
-          var = self.var()
+          var = self.var(struct_scope)
           
         self.lex.expect("}")
     
@@ -373,18 +313,22 @@ class Parse:
     if not op:
       return lhs
     
-    rhs = self.binop_set(set_num)
+    rhs = self.expect(self.binop_set(set_num), "expression")
     
-    if not rhs:
-      raise TokenError(op, f"expected 'expression' after '{op}' but found '{self.lex.token.text}'")
+    if op.text in op_set[0] and len(op.text) > 1:
+      rhs_op = self.binop_check(lhs, op.text[:-1], rhs)
+      return self.binop_check(lhs, '=', rhs_op)
     
-    if not c_type_check(lhs.data_type, op.text, rhs.data_type):
-      raise TokenError(op, f"invalid '{op}' operation between '{lhs.data_type}' and '{rhs.data_type}'")
+    return self.binop_check(lhs, op.text, rhs)
+  
+  def binop_check(self, lhs, op, rhs):
+    if not c_type_check(lhs.data_type, op, rhs.data_type):
+      raise TokenError(self.lex.token, f"invalid '{op}' operation between '{lhs.data_type}' and '{rhs.data_type}'")
     
-    if op.text == '=' and not islvalue(lhs):
-      raise TokenError(op, f"cannot assign to non-lvalue '{lhs}'")
+    if op == '=' and not islvalue(lhs):
+      raise TokenError(self.lex.token, f"cannot assign to non-lvalue '{lhs}'")
     
-    return BinopNode(lhs, op.text, rhs, lhs.data_type)
+    return BinopNode(lhs, op, rhs, lhs.data_type)
   
   def unary(self):
     if self.lex.accept("&"):

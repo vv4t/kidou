@@ -1,34 +1,22 @@
-call 30
+call 4
 int 1
 enter 2
+const 4
+fp
+sw
 const 3
 fp
-sw
-const 4
-fp
 const 4
 add
 sw
-fp
-load 2
-fp
-const -16
-add
-store 2
-jmp 28
-leave
-ret
-enter 2
-alloc 2
-call 4
-fp
-store 2
 fp
 lw
-int 2
 fp
 const 4
 add
+lw
+jge 30
+fp
 lw
 int 2
 leave
