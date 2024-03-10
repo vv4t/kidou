@@ -1,4 +1,4 @@
-.PHONY=default run
+.PHONY=default run debug
 
 default: vm run
 
@@ -8,3 +8,7 @@ vm: src/vm/*.c
 run:
 	./cc test/main.c
 	./vm a.out
+
+debug:
+	./cc test/main.c --dump
+	./vm a.out --debug

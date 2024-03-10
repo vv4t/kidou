@@ -32,7 +32,7 @@ class Scope:
     self.param = param
     self.parent = parent
     self.name = name
-    self.size = parent.size if parent else 0
+    self.size = 0
   
   def insert(self, var):
     if self.find(var.name):
@@ -41,7 +41,7 @@ class Scope:
     self.var[var.name] = var
     
     if not isfunction(var.data_type):
-      size = sizeof(var.data_type)
+      size = var_sizeof(var.data_type)
       align = min(size, 4)
       self.size = math.ceil(self.size / align) * align
       var.pos = self.size
@@ -82,17 +82,21 @@ class Context:
     self.scope = self.scope_global
     self.function = None
   
-  def find(self, name):
-    return self.scope.find(name) or self.scope_global.find(name)
-  
   def scope_fork(self):
     self.scope = Scope(parent=self.scope)
+    self.scope.size = self.scope.parent.size
   
   def scope_join(self):
     if self.scope:
       scope = self.scope
       self.scope = scope.parent
       self.scope.size = scope.size
+
+def var_sizeof(data_type):
+  if isarray(data_type):
+    return data_type.declarator.size * sizeof(DataType(data_type.specifier, data_type.declarator.base))
+  else:
+    return sizeof(data_type)
 
 def sizeof(data_type):
   specifier_size = { "int": 4, "char": 1 }
@@ -102,9 +106,7 @@ def sizeof(data_type):
       return data_type.specifier.struct_scope.size
     
     return specifier_size[data_type.specifier.name]
-  elif isinstance(data_type.declarator, Array):
-    return data_type.declarator.size * sizeof(DataType(data_type.specifier, data_type.declarator.base))
-  elif isinstance(data_type.declarator, Pointer):
+  elif ispointer(data_type) or isarray(data_type):
     return specifier_size["int"]
   else:
     raise Exception("unknown")
@@ -125,6 +127,7 @@ def c_type_check(a, op, b):
 def islvalue(node):
   return (
     isinstance(node, NameNode) or
+    isinstance(node, StringNode) or
     isinstance(node, IndexNode) or
     isinstance(node, AccessNode) or
     (isinstance(node, UnaryNode) and node.op == '*')
@@ -203,12 +206,11 @@ class ReturnStatement:
     return " " * indent + f"return {self.body}"
 
 class PrintStatement:
-  def __init__(self, print_type, body):
-    self.print_type = print_type
-    self.body = body
+  def __init__(self, arg):
+    self.arg = arg
   
   def __repr__(self, indent=0):
-    return " " * indent + f"{self.print_type} {self.body}"
+    return " " * indent + f"printf {self.arg}"
 
 class ForStatement:
   def __init__(self, init, condition, step, body):
@@ -280,6 +282,7 @@ class Var:
     self.data_type = data_type
     self.name = name
     self.body = None
+    self.local = True
   
   def __repr__(self):
     return f"{self.data_type.specifier} {declarator_with_name(self.data_type.declarator, self.name)}"
@@ -385,6 +388,14 @@ class CallNode:
   def __repr__(self):
     arg = "(" + ", ".join([ str(a) for a in self.arg ]) + ")"
     return f"{base}{arg}"
+
+class StringNode:
+  def __init__(self, text, data_type):
+    self.text = text
+    self.data_type = data_type
+  
+  def __repr__(self):
+    return '"' + str(self.text) + '"'
 
 class ConstantNode:
   def __init__(self, value, data_type):

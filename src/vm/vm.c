@@ -12,6 +12,12 @@ void vm_store(vm_t *vm, int a, int b);
 op_t text_op(char *text);
 const char *op_text(op_t op);
 
+typedef enum {
+  STATUS_NONE,
+  STATUS_EXIT,
+  STATUS_PRINTF,
+} status_t;
+
 void vm_init(vm_t *vm)
 {
   vm->sp = -1;
@@ -20,6 +26,135 @@ void vm_init(vm_t *vm)
   vm->debug = false;
   
   memset(vm->stack, 0, sizeof(vm->stack));
+}
+
+bool vm_load_file(vm_t *vm, const char *path)
+{
+  FILE *file = fopen(path, "rb");
+  
+  if (!file) {
+    perror(path);
+    return false;
+  }
+  
+  char word[256];
+  
+  if (!fscanf(file, "%i", &vm->num_export)) goto vm_load_file_ERROR;
+  
+  for (int i = 0; i < vm->num_export; i++) {
+    if (!fscanf(file, "%255s", vm->vm_export[i].name)) goto vm_load_file_ERROR;
+    if (!fscanf(file, "%i", &vm->vm_export[i].pos)) goto vm_load_file_ERROR;
+  }
+  
+  int num_data;
+  if (!fscanf(file, "%i", &num_data)) goto vm_load_file_ERROR;
+  
+  for (int i = 0; i < num_data; i++) {
+    if (!fscanf(file, "%255s", word)) goto vm_load_file_ERROR;
+    
+    if (strcmp(word, "space") == 0) {
+      int size;
+      if (!fscanf(file, "%i", &size)) goto vm_load_file_ERROR;
+      vm->sp += (size + 4) / 4;
+    } else if (strcmp(word, "data") == 0) {
+      int size;
+      if (!fscanf(file, "%i", &size)) goto vm_load_file_ERROR;
+      
+      fgetc(file);
+      char *text = (char*) &vm->stack[vm->sp];
+      
+      for (int i = 0; i < size; i++) {
+        text[i] = fgetc(file);
+      }
+      
+      text[size] = 0;
+      vm->sp += (size + 4) / 4;
+    } else {
+      goto vm_load_file_ERROR;
+    }
+  }
+  
+  vm->data_size = vm->sp;
+  vm->fp = vm->sp;
+  
+  vm->ip = 0;
+  
+  while (fscanf(file, "%255s", word) == 1) {
+    op_t op = text_op(word);
+    vm->text[vm->ip++] = op;
+  }
+  
+  vm->text_size = vm->ip;
+  vm->text[vm->ip++] = VM_INT;
+  vm->text[vm->ip++] = STATUS_EXIT;
+  
+  return true;
+vm_load_file_ERROR:
+  fclose(file);
+  return false;
+}
+
+void vm_printf(vm_t *vm)
+{
+  char *stack = (char*) vm->stack;
+  char *va_arg = (char*) &vm->stack[vm->sp];
+  
+  char *format = &stack[*((int*) va_arg)];
+  va_arg -= 4;
+  
+  char *c = format;
+  
+  printf("> ");
+  
+  while (*c) {
+    if (*c == '%') {
+      c++;
+      switch (*c) {
+      case 'i':
+        printf("%i", *((int*) va_arg));
+        va_arg -= 4;
+        break;
+      case 's':
+        printf("%s", &stack[*((int*) va_arg)]);
+        va_arg -= 4;
+        break;
+      }
+      
+      c++;
+    } else {
+      putc(*c++, stdout);
+    }
+  }
+  
+  putc('\n', stdout);
+}
+
+void vm_call_export(vm_t *vm, vm_export_t *vm_export)
+{
+  vm->status = STATUS_NONE;
+  vm_push(vm, vm->text_size);
+  vm->ip = vm_export->pos;
+  
+  while (vm->status != STATUS_EXIT) {
+    vm_exec(vm);
+    
+    switch (vm->status) {
+    case STATUS_PRINTF:
+      vm_printf(vm);
+      break;
+    }
+  }
+}
+
+vm_export_t *vm_find_export(vm_t *vm, const char *name)
+{
+  for (int i = 0; i < vm->num_export; i++) {
+    if (strcmp(vm->vm_export[i].name, name) == 0) {
+      return &vm->vm_export[i];
+    }
+  }
+  
+  return NULL;
 }
 
 void vm_info(vm_t *vm)

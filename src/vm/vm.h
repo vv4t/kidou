@@ -3,6 +3,9 @@
 
 #include <stdbool.h>
 
+#define MAX_NAME 64
+#define MAX_EXPORT 32
+
 typedef enum {
   VM_CONST,
   
@@ -52,22 +55,34 @@ typedef enum {
 } op_t;
 
 typedef struct {
+  char name[MAX_NAME];
+  int pos;
+} vm_export_t;
+
+typedef struct {
+  vm_export_t vm_export[MAX_EXPORT];
+  int num_export;
+  
   int sp;
   int fp;
   int ip;
   
   int status;
+  int text_size;
+  int data_size;
   
-  int text[512];
-  int stack[128];
+  int text[1024];
+  int stack[1024];
   
   bool debug;
 } vm_t;
 
+bool vm_load_file(vm_t *vm, const char *path);
+vm_export_t *vm_find_export(vm_t *vm, const char *name);
+void vm_call_export(vm_t *vm, vm_export_t *vm_export);
 void vm_init(vm_t *vm);
 void vm_exec(vm_t *vm);
 void vm_info(vm_t *vm);
-bool vm_asm(vm_t *vm, const char *path);
 int vm_pop(vm_t *vm);
 
 const char *op_text(op_t op);

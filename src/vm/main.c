@@ -2,15 +2,6 @@
 
 #include <string.h>
 #include "vm.h"
-#include "asm.h"
-
-typedef enum {
-  STATUS_NONE,
-  STATUS_EXIT,
-  STATUS_PRINT_INT,
-  STATUS_PRINT_CHAR,
-  STATUS_PRINT_STRING
-} status_t;
 
 int main(int argc, char *argv[])
 {
@@ -23,26 +14,9 @@ int main(int argc, char *argv[])
     }
   }
   
-  asm_load(&vm, "a.out");
-  
-  vm.status = STATUS_NONE;
-  vm.ip = 0;
-  
-  while (vm.status != STATUS_EXIT) {
-    vm_exec(&vm);
-    
-    switch (vm.status) {
-    case STATUS_PRINT_INT:
-      printf("> %i\n", vm_pop(&vm));
-      break;
-    case STATUS_PRINT_CHAR:
-      printf("> %c\n", vm_pop(&vm));
-      break;
-    case STATUS_PRINT_STRING:
-      printf("> %s\n", &((char*) vm.stack)[vm_pop(&vm)]);
-      break;
-    }
-  }
+  vm_load_file(&vm, "a.out");
+  vm_export_t *export_main = vm_find_export(&vm, "main");
+  vm_call_export(&vm, export_main);
   
   return 0;
 }

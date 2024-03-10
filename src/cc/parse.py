@@ -22,6 +22,8 @@ class Parse:
     if not var:
       return None
     
+    var.local = False
+    
     if not isfunction(var.data_type):
       self.lex.expect(';')
       return var
@@ -29,7 +31,7 @@ class Parse:
     if self.lex.accept(';'):
       return var
     
-    var.body = FunctionBody(Scope(param=var.data_type.declarator.param))
+    var.body = FunctionBody(Scope(param=var.data_type.declarator.scope_param, parent=self.context.scope_global))
     self.context.bind(var)
     var.body.body = self.expect(self.compound_statement(), "compound-statement")
     self.context.unbind()
@@ -141,19 +143,13 @@ class Parse:
       return ReturnStatement(body)
     
   def print_statement(self):
-    print_type = find_match([
-      lambda : self.lex.accept("print_int"),
-      lambda : self.lex.accept("print_char"),
-      lambda : self.lex.accept("print_string")
-    ])
-    
-    if not print_type:
+    if not self.lex.accept("printf"):
       return None
     
-    body = self.expect(self.expression(), "expression")
+    arg = self.arg()
     self.lex.expect(';')
     
-    return PrintStatement(print_type.text, body)
+    return PrintStatement(arg)
   
   def var_statement(self):
     var = self.var(self.context.scope)
@@ -189,6 +185,7 @@ class Parse:
       return Var(DataType(specifier, None), None)
     
     if isstruct(var.data_type) and sizeof(var.data_type) == 0:
+      print(var.data_type)
       raise TokenError(self.lex.token, f"declaring '{var.name}' with incomplete type '{var.data_type}'")
     
     if isvoid(var.data_type):
@@ -218,8 +215,8 @@ class Parse:
       
       scope_param = ScopeParam()
       
-      for p in reversed(param):
-        if self.context.find(p) or not scope_param.insert(p):
+      for p in param:
+        if self.context.scope.find(p) or not scope_param.insert(p):
           raise TokenError(self.lex.token, f"redefinition of '{p.name}'")
       
       declarator = FunctionType(declarator, param, scope_param)
@@ -312,18 +309,21 @@ class Parse:
     
     lhs = self.binop_set(set_num + 1)
     
-    op = find_match([ (lambda y: (lambda : self.lex.accept(y)))(x) for x in op_set[set_num] ])
+    while True:
+      op = find_match([ (lambda y: (lambda : self.lex.accept(y)))(x) for x in op_set[set_num] ])
+      
+      if not op:
+        return lhs
+      
+      rhs = self.expect(self.binop_set(set_num + 1), "expression")
+      
+      if op.text in op_set[0] and len(op.text) > 1:
+        rhs_op = self.binop_check(lhs, op.text[:-1], rhs)
+        lhs = self.binop_check(lhs, '=', rhs_op)
+      else:
+        lhs = self.binop_check(lhs, op.text, rhs)
     
-    if not op:
-      return lhs
-    
-    rhs = self.expect(self.binop_set(set_num), "expression")
-    
-    if op.text in op_set[0] and len(op.text) > 1:
-      rhs_op = self.binop_check(lhs, op.text[:-1], rhs)
-      return self.binop_check(lhs, '=', rhs_op)
-    
-    return self.binop_check(lhs, op.text, rhs)
+    return lhs
   
   def binop_check(self, lhs, op, rhs):
     if not c_type_check(lhs.data_type, op, rhs.data_type):
@@ -332,7 +332,9 @@ class Parse:
     if op == '=' and not islvalue(lhs):
       raise TokenError(self.lex.token, f"cannot assign to non-lvalue '{lhs}'")
     
-    return BinopNode(lhs, op, rhs, lhs.data_type)
+    data_type = lhs.data_type
+    
+    return BinopNode(lhs, op, rhs, data_type)
   
   def unary(self):
     if self.lex.accept("&"):
@@ -411,6 +413,11 @@ class Parse:
     return IndexNode(base, pos, base_type(base.data_type))
   
   def primitive(self):
+    if self.lex.match("Text"):
+      token = self.lex.pop()
+      data_type = DataType(Specifier("char", None), Array(None, len(token.text)))
+      return StringNode(token.value, data_type)
+    
     if self.lex.match("Number"):
       token = self.lex.pop()
       return ConstantNode(token.value, type_specifier("int"))
@@ -463,7 +470,7 @@ class Parse:
     return arg
   
   def name(self, token):
-    var = self.context.find(token.text)
+    var = self.context.scope.find(token.text)
     
     if not var:
       raise TokenError(token, f"name '{token.text}' is not defined")

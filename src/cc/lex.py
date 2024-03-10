@@ -36,6 +36,7 @@ class Lex:
       return None
     
     self.token = find_match([
+      lambda : self.match_text(),
       lambda : self.match_number(),
       lambda : self.match_identifier(),
       lambda : self.match_symbol()
@@ -100,9 +101,7 @@ class Lex:
       "print",
       "return",
       "struct",
-      "print_int",
-      "print_char",
-      "print_string"
+      "printf"
     ]
     
     if match:
@@ -131,6 +130,14 @@ class Lex:
     for symbol in symbols:
       if self.text.startswith(symbol):
         return Token(symbol, symbol, self.line, self.src)
+    
+    return None
+  
+  def match_text(self):
+    match = re.search("^\"(.*?)\"", self.text)
+    
+    if match:
+      return Token("Text", match.group(), self.line, self.src, value=match.group(1))
     
     return None
   

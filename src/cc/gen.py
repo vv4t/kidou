@@ -9,6 +9,9 @@ class Gen:
     self.text = ""
     self.ip = 0
     self.label = {}
+    self.export = {}
+    self.string_map = {}
+    self.data = []
     self.current_function = None
     self.return_label = None
     self.ax = 0
@@ -23,6 +26,9 @@ class Gen:
     
     for label, pos in self.label.items():
       self.text = self.text.replace(label, str(pos))
+    
+    self.emit_data()
+    self.emit_export()
   
   def dump(self):
     label_map = {}
@@ -44,6 +50,31 @@ class Gen:
       
       ip += 1 + line.count(" ")
   
+  def emit_data(self):
+    size = 0
+    
+    text = f"{1 + len(self.string_map)}\n"
+    text += f"space {self.parse.context.scope_global.size}\n"
+    
+    size += self.parse.context.scope_global.size
+    
+    for string, label in self.string_map.items():
+      text += f"data {len(string)}\n"
+      text += string
+      text += "\n"
+      self.text = self.text.replace(label, str(size))
+      size += len(string) + 2
+    
+    self.text = text + self.text
+  
+  def emit_export(self):
+    text = str(len(self.export)) + "\n"
+    
+    for key, value in self.export.items():
+      text += f"{key} {value}\n"
+    
+    self.text = text + self.text
+  
   def unit(self):
     for var in self.parse.context.scope_global.var.values():
       if isfunction(var.data_type):
@@ -52,6 +83,7 @@ class Gen:
   def function(self, node):
     self.current_function = node
     
+    self.export_label(node.name)
     self.emit_label(f".{node.name}")
     self.emit(f'enter {math.ceil(node.body.scope.size / 4)}')
     
@@ -133,6 +165,8 @@ class Gen:
     
     if node.else_if:
       label_else = self.label_new()
+    else:
+      label_else = label_end
     
     self.condition(node.condition, label_body, label_else)
     self.emit_label(label_body)
@@ -199,18 +233,17 @@ class Gen:
       self.ax -= 2
   
   def print(self, node):
-    self.expression(node.body)
+    arg_size = 0
+    for arg in reversed(node.arg):
+      self.expression(arg)
+      arg_size += max(sizeof(arg.data_type), 4)
     
-    if node.print_type == "print_int":
-      self.emit("int 2")
-    elif node.print_type == "print_char":
-      self.emit("int 3")
-    elif node.print_type == "print_string":
-      self.emit("int 4")
-    else:
-      raise Exception("unknown")
+    self.emit("int 2")
     
-    self.ax -= 1
+    if arg_size > 0:
+      self.emit(f'free {arg_size // 4}')
+    
+    self.ax -= arg_size // 4
   
   def return_statement(self, node):
     if node.body:
@@ -248,12 +281,13 @@ class Gen:
       raise Exception("unknown")
   
   def call(self, node):
-    return_size = sizeof(base_type(node.base.data_type))
+    return_type = base_type(node.base.data_type)
     
-    if return_size > 0:
-      self.emit(f"alloc {math.ceil(return_size / 4)}")
+    if not isvoid(return_type):
+      size = sizeof(return_type)
+      self.emit(f"alloc {math.ceil(size / 4)}")
     
-    for arg in node.arg:
+    for arg in reversed(node.arg):
       self.expression(arg)
     
     if isinstance(node.base, NameNode):
@@ -274,7 +308,9 @@ class Gen:
   def value(self, node):
     self.lvalue(node)
     
-    if sizeof(node.data_type) == 1:
+    if isarray(node.data_type):
+      pass
+    elif sizeof(node.data_type) == 1:
       self.emit("lb")
     elif sizeof(node.data_type) == 4:
       self.emit("lw")
@@ -286,6 +322,8 @@ class Gen:
   def lvalue(self, node):
     if isinstance(node, NameNode):
       self.name(node)
+    elif isinstance(node, StringNode):
+      self.string(node)
     elif isinstance(node, IndexNode):
       self.index(node)
     elif isinstance(node, AccessNode):
@@ -325,11 +363,14 @@ class Gen:
       self.emit("add")
   
   def name(self, node):
-    self.emit("fp")
-    
-    if node.var.pos != 0:
+    if node.var.local:
+      self.emit("fp")
+      
+      if node.var.pos != 0:
+        self.emit(f"const {node.var.pos}")
+        self.emit("add")
+    else:
       self.emit(f"const {node.var.pos}")
-      self.emit("add")
       
     self.ax += 1
   
@@ -382,6 +423,17 @@ class Gen:
     else:
       raise Exception("unknown")
   
+  def string(self, node):
+    label = None
+    
+    if node.text in self.string_map:
+      label = self.string_map[node.text]
+    else:
+      label = self.label_new()
+      self.string_map[node.text] = label
+    
+    self.emit(f"const {label}")
+  
   def constant(self, node):
     self.emit(f'const {node.value}')
     self.ax += 1
@@ -389,6 +441,12 @@ class Gen:
   def label_new(self):
     self.num_label += 1
     return "." + str(self.num_label)
+  
+  def export_label(self, label):
+    if label in self.export:
+      raise Exception(f"export redefinition '{label}'")
+    
+    self.export[label] = self.ip
   
   def emit_label(self, label):
     if label in self.label:
