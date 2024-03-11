@@ -1,18 +1,43 @@
-1
-main 4
-3
+2
+square 4
+main 23
+2
 space 0
-data 6
-whattt
-data 14
-hi there %i %s
-call 4
+data 2
+ok
+call 23
 int 1
 enter 0
-const 0
+fp
+const -12
+add
+lw
 const 3
-const 8
+add
+fp
+const -16
+add
+sw
+jmp 21
+leave
+ret
+enter 1
+const 0
+fp
+sw
+fp
+lw
+const 3
+jge 50
+const 0
 int 2
-free 3
+free 1
+fp
+lw
+const 1
+add
+fp
+sw
+jmp 29
 leave
 ret

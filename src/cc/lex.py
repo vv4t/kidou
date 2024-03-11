@@ -1,3 +1,4 @@
+import os
 import re
 from helper import find_match
 
@@ -22,18 +23,38 @@ class Lex:
     text = file.read()
     file.close()
     
+    self.stack_src = []
     self.src = src
     self.text = text
+    self.define = {}
+    self.macro_depth = 0
+    
     self.token = None
     self.line = 1
     self.next()
   
   def next(self):
-    self.skip_whitespace()
+    while True:
+      self.skip_whitespace()
+      
+      if self.preprocess():
+        pass
+      elif len(self.text) == 0:
+        if len(self.stack_src) > 0:
+          src, text, line = self.stack_src.pop()
+          self.src = src
+          self.text = text
+          self.line = line
+        else:
+          self.token = Token("EOF", "EOF", self.line, self.src)
+          return self.token
+      else:
+        for name, value in self.define.items():
+          if self.text.startswith(name):
+            self.text = value + self.text[len(name):]
+        break
     
-    if len(self.text) == 0:
-      self.token = Token("EOF", "EOF", self.line, self.src)
-      return None
+    self.skip_whitespace()
     
     self.token = find_match([
       lambda : self.match_text(),
@@ -50,6 +71,78 @@ class Lex:
     self.text = self.text[len(self.token.text):]
     
     return self.token
+  
+  def preprocess(self):
+    return find_match([
+      lambda : self.pp_include(),
+      lambda : self.pp_define(),
+      lambda : self.pp_ifdef()
+    ])
+  
+  def pp_ifdef(self):
+    
+    endif_match = re.match("^\s*#endif\s*$", self.text, flags=re.MULTILINE)
+    ifdef_match = re.match("^\s*#ifdef ([a-zA-Z_][a-zA-Z0-9_]*)\s*$", self.text, flags=re.MULTILINE)
+    ifndef_match = re.match("^\s*#ifndef ([a-zA-Z_][a-zA-Z0-9_]*)\s*$", self.text, flags=re.MULTILINE)
+    
+    if endif_match:
+      self.eat_line()
+      self.macro_depth -= 1
+    elif ifdef_match or ifndef_match:
+      self.eat_line()
+      
+      macro_depth = self.macro_depth
+      
+      name = (ifdef_match or ifndef_match).group(1)
+      if ifdef_match and name not in self.define or ifndef_match and name in self.define:
+        while not re.match("^\s*#endif\s*$", self.text, flags=re.MULTILINE):
+          if not self.pp_ifdef():
+            self.text = self.text.split('\n', 1)[1]
+        
+        self.text = self.text.split('\n', 1)[1]
+      else:
+        self.macro_depth += 1
+    else:
+      return False
+    
+    return True
+  
+  def pp_include(self):
+    match = re.match("^\s*#include \"(.*?)\"$", self.text, flags=re.MULTILINE)
+    
+    if not match:
+      return False
+    else:
+      self.eat_line()
+    
+    src = os.path.join(os.path.dirname(self.src), match.group(1))
+    
+    file = open(src)
+    text = file.read()
+    file.close()
+    
+    self.stack_src.append((self.src, self.text, self.line))
+    
+    self.src = src
+    self.text = text
+    self.line = 1
+    
+    return True
+  
+  def pp_define(self):
+    match = re.match("^\s*#define ([a-zA-Z_][a-zA-Z0-9_]*) (.*?)$", self.text, flags=re.MULTILINE)
+    
+    if not match:
+      return False
+    else:
+      self.eat_line()
+    
+    name = match.group(1)
+    value = match.group(2)
+    
+    self.define[name] = value
+    
+    return True
   
   def match(self, token_type):
     if self.token == None:
@@ -81,14 +174,14 @@ class Lex:
     return token
   
   def skip_whitespace(self):
-    while re.search("^[ \t\n]", self.text):
+    while re.match("^[ \t\n]", self.text):
       if self.text.startswith("\n"):
         self.line += 1
       
       self.text = self.text[1:]
   
   def match_identifier(self):
-    match = re.search("^[a-zA-Z_][a-zA-Z0-9_]*", self.text)
+    match = re.match("^[a-zA-Z_][a-zA-Z0-9_]*", self.text)
     
     keyword = [
       "void",
@@ -134,7 +227,7 @@ class Lex:
     return None
   
   def match_text(self):
-    match = re.search("^\"(.*?)\"", self.text)
+    match = re.match("^\"(.*?)\"", self.text)
     
     if match:
       return Token("Text", match.group(), self.line, self.src, value=match.group(1))
@@ -142,15 +235,19 @@ class Lex:
     return None
   
   def match_number(self):
-    match = re.search("^[0-9]+", self.text)
+    match = re.match("^[0-9]+", self.text)
     
     if match:
       return Token("Number", match.group(), self.line, self.src, value=int(match.group()))
     
-    match = re.search("^'(.*)'", self.text)
+    match = re.match("^'(.*)'", self.text)
     
     if match:
       c = ord(match.group(1)[0])
       return Token("Number", match.group(), self.line, self.src, value=c)
     
     return None
+  
+  def eat_line(self):
+    self.text = self.text.split('\n', 1)[1]
+    self.line += 1
