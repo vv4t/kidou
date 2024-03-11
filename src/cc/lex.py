@@ -6,6 +6,10 @@ class TokenError(Exception):
   def __init__(self, token, message):
     super().__init__(f'{token.src}:{token.line}: {message}')
 
+class LexError(Exception):
+  def __init__(self, src, line, message):
+    super().__init__(f'{src}:{line}: {message}')
+
 class Token:
   def __init__(self, token_type, text, line=0, src="None", value=0):
     self.token_type = token_type
@@ -27,8 +31,12 @@ class Lex:
     self.src = src
     self.text = text
     self.define = {}
-    self.macro_depth = 0
     
+    self.macro_depth = 0
+    self.macro_line = 0
+    self.macro_src = src
+    self.macro_type = ""
+
     self.token = None
     self.line = 1
     self.next()
@@ -46,6 +54,9 @@ class Lex:
           self.text = text
           self.line = line
         else:
+          if self.macro_depth > 0:
+            raise LexError(self.macro_src, self.macro_line, f"unterminated {self.macro_type}")
+          
           self.token = Token("EOF", "EOF", self.line, self.src)
           return self.token
       else:
@@ -86,21 +97,31 @@ class Lex:
     ifndef_match = re.match("^\s*#ifndef ([a-zA-Z_][a-zA-Z0-9_]*)\s*$", self.text, flags=re.MULTILINE)
     
     if endif_match:
-      self.eat_line()
       self.macro_depth -= 1
-    elif ifdef_match or ifndef_match:
+      
+      if self.macro_depth < 0:
+        raise LexError(self.src, self.line, "#endif without if")
+      
       self.eat_line()
       
-      macro_depth = self.macro_depth
+    elif ifdef_match or ifndef_match:
+      start_line = self.line
+      macro_type = "#ifdef" if ifdef_match else "#ifndef"
+      
+      self.eat_line()
       
       name = (ifdef_match or ifndef_match).group(1)
       if ifdef_match and name not in self.define or ifndef_match and name in self.define:
         while not re.match("^\s*#endif\s*$", self.text, flags=re.MULTILINE):
           if not self.pp_ifdef():
-            self.text = self.text.split('\n', 1)[1]
+            if not self.eat_line():
+              raise LexError(self.src, start_line, f"unterminated {macro_type}")
         
         self.text = self.text.split('\n', 1)[1]
       else:
+        self.macro_type = macro_type
+        self.macro_line = self.line
+        self.macro_src = self.src
         self.macro_depth += 1
     else:
       return False
@@ -249,5 +270,12 @@ class Lex:
     return None
   
   def eat_line(self):
-    self.text = self.text.split('\n', 1)[1]
+    split = self.text.split('\n', 1)
+    
+    if len(split) <= 1:
+      return False
+    
+    self.text = split[1]
     self.line += 1
+    
+    return True

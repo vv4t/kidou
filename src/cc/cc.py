@@ -1,4 +1,4 @@
-from lex import Lex, TokenError
+from lex import Lex, TokenError, LexError
 from parse import Parse
 from gen import Gen
 import sys
@@ -14,5 +14,5 @@ try:
   f = open("a.out", "w")
   f.write(gen.text)
   f.close()
-except TokenError as e:
+except (LexError, TokenError) as e:
   print(e)

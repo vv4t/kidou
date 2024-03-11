@@ -1,8 +1,10 @@
 2
 square 4
 main 23
-2
+3
 space 0
+data 2
+hi
 data 2
 ok
 call 23
@@ -28,8 +30,11 @@ sw
 fp
 lw
 const 3
-jge 50
+jge 56
 const 0
+int 2
+free 1
+const 4
 int 2
 free 1
 fp
