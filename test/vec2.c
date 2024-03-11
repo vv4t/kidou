@@ -19,12 +19,16 @@ struct vec2 add(struct vec2 a, struct vec2 b)
   return c;
 }
 
+void print_vec2(struct vec2 v)
+{
+  printf "vec2(%i, %i)", v.x, v.y;
+}
+
 void main()
 {
   struct vec2 a = vec2(3, 4);
   struct vec2 b = vec2(5, 6);
   struct vec2 c = add(a, b);
   
-  print_int c.x;
-  print_int c.y;
+  print_vec2(c);
 }

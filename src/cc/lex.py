@@ -133,14 +133,17 @@ class Lex:
     
     if not match:
       return False
-    else:
-      self.eat_line()
     
     src = os.path.join(os.path.dirname(self.src), match.group(1))
+    
+    if not os.path.isfile(src):
+      raise LexError(self.src, self.line, f"could not include '{match.group(1)}'")
     
     file = open(src)
     text = file.read()
     file.close()
+    
+    self.eat_line()
     
     self.stack_src.append((self.src, self.text, self.line))
     
@@ -151,17 +154,22 @@ class Lex:
     return True
   
   def pp_define(self):
-    match = re.match("^\s*#define ([a-zA-Z_][a-zA-Z0-9_]*) (.*?)$", self.text, flags=re.MULTILINE)
+    match_value = re.match("^\s*#define ([a-zA-Z_][a-zA-Z0-9_]*) (.*?)$", self.text, flags=re.MULTILINE)
+    match_empty = re.match("^\s*#define ([a-zA-Z_][a-zA-Z0-9_]*)\s+$", self.text, flags=re.MULTILINE)
     
-    if not match:
-      return False
-    else:
+    if match_value:
       self.eat_line()
     
-    name = match.group(1)
-    value = match.group(2)
-    
-    self.define[name] = value
+      name = match_value.group(1)
+      value = match_value.group(2)
+      
+      self.define[name] = value
+    elif match_empty:
+      self.eat_line()
+      name = match_empty.group(1)
+      self.define[name] = ""
+    else:
+      return False
     
     return True
   

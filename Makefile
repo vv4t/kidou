@@ -7,8 +7,8 @@ vm: src/vm/*.c
 
 run:
 	./cc test/main.c
-	./vm a.out
+	./vm
 
 debug:
 	./cc test/main.c --dump
-	./vm a.out --debug
+	./vm --debug

@@ -17,7 +17,7 @@ void main()
   
   for (int i = 0; i < n; i += 1) {
     if (prime[i] > 0) {
-      print_int i;
+      printf "%i", i;
     }
   }
 }

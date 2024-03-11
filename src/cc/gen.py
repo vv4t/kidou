@@ -63,7 +63,7 @@ class Gen:
       text += string
       text += "\n"
       self.text = self.text.replace(label, str(size))
-      size += len(string) + 2
+      size = (size + 4) // 4
     
     self.text = text + self.text
   
@@ -440,7 +440,7 @@ class Gen:
   
   def label_new(self):
     self.num_label += 1
-    return "." + str(self.num_label)
+    return f".{self.num_label}_"
   
   def export_label(self, label):
     if label in self.export:

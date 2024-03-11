@@ -21,6 +21,6 @@ void main()
   }
   
   for (int i = 0; i < n; i += 1) {
-    print_int data[i];
+    printf "%i", data[i];
   }
 }
