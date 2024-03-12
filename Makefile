@@ -1,4 +1,4 @@
-.PHONY=default run debug
+.PHONY=default run debug test
 
 default: vm run
 
@@ -12,3 +12,10 @@ run:
 debug:
 	./cc test/main.c --dump
 	./vm --debug
+
+test:
+	./kidou test/main.c
+	./kidou test/bubble_sort.c
+	./kidou test/fib.c
+	./kidou test/sieve.c
+	./kidou test/vec2.c

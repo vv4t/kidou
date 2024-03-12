@@ -43,29 +43,24 @@ class Lex:
   
   def next(self):
     while True:
-      self.skip_whitespace()
-      
-      if self.preprocess():
+      if self.skip_whitespace():
         pass
-      elif len(self.text) == 0:
-        if len(self.stack_src) > 0:
-          src, text, line = self.stack_src.pop()
-          self.src = src
-          self.text = text
-          self.line = line
-        else:
-          if self.macro_depth > 0:
-            raise LexError(self.macro_src, self.macro_line, f"unterminated {self.macro_type}")
-          
-          self.token = Token("EOF", "EOF", self.line, self.src)
-          return self.token
+      elif self.skip_comment():
+        pass
+      elif self.preprocess():
+        pass
+      elif self.file_eof():
+        pass
+      elif self.replace_macro():
+        pass
       else:
-        for name, value in self.define.items():
-          if self.text.startswith(name):
-            self.text = value + self.text[len(name):]
         break
     
-    self.skip_whitespace()
+    if self.text == "":
+      if self.macro_depth > 0:
+        raise LexError(self.macro_src, self.macro_line, f"unterminated {self.macro_type}")
+      self.token = Token("EOF", "EOF", self.line, self.src)
+      return self.token
     
     self.token = find_match([
       lambda : self.match_text(),
@@ -83,6 +78,49 @@ class Lex:
     
     return self.token
   
+  def skip_whitespace(self):
+    if not re.match("^[ \t\n]", self.text):
+      return False
+    
+    while re.match("^[ \t\n]", self.text):
+      if self.text.startswith("\n"):
+        self.line += 1
+      
+      self.text = self.text[1:]
+    
+    return True
+  
+  def skip_comment(self):
+    match = re.match("^\s*\/\/.*$", self.text, flags=re.MULTILINE)
+    
+    if match:
+      self.text = self.text[len(match.group()):]
+      return True
+    
+    return False
+  
+  def replace_macro(self):
+    for name, value in self.define.items():
+      if self.text.startswith(name):
+        self.text = value + self.text[len(name):]
+        return True
+    
+    return False
+  
+  def file_eof(self):
+    if len(self.text) > 0:
+      return False
+    
+    if len(self.stack_src) > 0:
+      src, text, line = self.stack_src.pop()
+      self.src = src
+      self.text = text
+      self.line = line
+    else:
+      return False
+    
+    return True
+  
   def preprocess(self):
     return find_match([
       lambda : self.pp_include(),
@@ -91,19 +129,15 @@ class Lex:
     ])
   
   def pp_ifdef(self):
-    
     endif_match = re.match("^\s*#endif\s*$", self.text, flags=re.MULTILINE)
     ifdef_match = re.match("^\s*#ifdef ([a-zA-Z_][a-zA-Z0-9_]*)\s*$", self.text, flags=re.MULTILINE)
     ifndef_match = re.match("^\s*#ifndef ([a-zA-Z_][a-zA-Z0-9_]*)\s*$", self.text, flags=re.MULTILINE)
     
     if endif_match:
       self.macro_depth -= 1
-      
       if self.macro_depth < 0:
         raise LexError(self.src, self.line, "#endif without if")
-      
       self.eat_line()
-      
     elif ifdef_match or ifndef_match:
       start_line = self.line
       macro_type = "#ifdef" if ifdef_match else "#ifndef"
@@ -113,9 +147,8 @@ class Lex:
       name = (ifdef_match or ifndef_match).group(1)
       if ifdef_match and name not in self.define or ifndef_match and name in self.define:
         while not re.match("^\s*#endif\s*$", self.text, flags=re.MULTILINE):
-          if not self.pp_ifdef():
-            if not self.eat_line():
-              raise LexError(self.src, start_line, f"unterminated {macro_type}")
+          if not self.pp_ifdef() and not self.eat_line():
+            raise LexError(self.src, start_line, f"unterminated {macro_type}")
         
         self.text = self.text.split('\n', 1)[1]
       else:
@@ -202,13 +235,6 @@ class Lex:
     self.next()
     return token
   
-  def skip_whitespace(self):
-    while re.match("^[ \t\n]", self.text):
-      if self.text.startswith("\n"):
-        self.line += 1
-      
-      self.text = self.text[1:]
-  
   def match_identifier(self):
     match = re.match("^[a-zA-Z_][a-zA-Z0-9_]*", self.text)
     
@@ -236,6 +262,7 @@ class Lex:
   
   def match_symbol(self):
     symbols = [
+      "++", "--",
       "+=", "-=", "*=", "/=",
       "->", ",", ".",
       "(", ")", "[", "]", "{", "}",

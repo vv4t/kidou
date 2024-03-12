@@ -309,19 +309,24 @@ class Parse:
     
     lhs = self.binop_set(set_num + 1)
     
-    while True:
-      op = find_match([ (lambda y: (lambda : self.lex.accept(y)))(x) for x in op_set[set_num] ])
+    op = find_match([ (lambda y: (lambda : self.lex.accept(y)))(x) for x in op_set[set_num] ])
+    
+    if op and op.text in op_set[0]:
+      rhs = self.expect(self.binop_set(set_num), "expression")
       
-      if not op:
-        return lhs
+      if len(op.text) > 1:
+        rhs = self.binop_check(lhs, op.text[:-1], rhs)
       
-      rhs = self.expect(self.binop_set(set_num + 1), "expression")
-      
-      if op.text in op_set[0] and len(op.text) > 1:
-        rhs_op = self.binop_check(lhs, op.text[:-1], rhs)
-        lhs = self.binop_check(lhs, '=', rhs_op)
-      else:
+      lhs = self.binop_check(lhs, '=', rhs)
+    else:
+      while op:
+        if not op:
+          return lhs
+        
+        rhs = self.expect(self.binop_set(set_num + 1), "expression")
         lhs = self.binop_check(lhs, op.text, rhs)
+        
+        op = find_match([ (lambda y: (lambda : self.lex.accept(y)))(x) for x in op_set[set_num] ])
     
     return lhs
   

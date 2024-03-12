@@ -112,7 +112,7 @@ class Gen:
     elif isinstance(node, ReturnStatement):
       self.return_statement(node)
     elif isinstance(node, ExpressionStatement):
-      self.expression(node.body)
+      self.expression(node.body, output=False)
     elif isinstance(node, CompoundStatement):
       for statement in node.body:
         self.statement(statement)
@@ -266,21 +266,21 @@ class Gen:
     
     self.emit(f"jmp {self.return_label}")
   
-  def expression(self, node):
+  def expression(self, node, output=True):
     if islvalue(node):
-      self.value(node)
+      self.value(node, output)
     elif isinstance(node, ConstantNode):
-      self.constant(node)
+      self.constant(node, output)
     elif isinstance(node, BinopNode):
-      self.binop(node)
+      self.binop(node, output)
     elif isinstance(node, UnaryNode):
-      self.unary(node)
+      self.unary(node, output)
     elif isinstance(node, CallNode):
-      self.call(node)
+      self.call(node, output)
     else:
       raise Exception("unknown")
   
-  def call(self, node):
+  def call(self, node, output):
     return_type = base_type(node.base.data_type)
     
     if not isvoid(return_type):
@@ -298,71 +298,79 @@ class Gen:
     arg_size = math.ceil(node.base.data_type.declarator.scope_param.size / 4)
     if arg_size > 0:
       self.emit(f'free {arg_size}')
+    
+    if not output and not isvoid(return_type):
+      self.emit(f"free {math.ceil(sizeof(return_type) / 4)}")
   
-  def unary(self, node):
+  def unary(self, node, output):
     if node.op == '&':
-      self.lvalue(node.base)
+      self.lvalue(node.base, output)
     else:
       raise Exception("unknown")
   
-  def value(self, node):
-    self.lvalue(node)
+  def value(self, node, output):
+    self.lvalue(node, output)
     
-    if isarray(node.data_type):
-      pass
-    elif sizeof(node.data_type) == 1:
-      self.emit("lb")
-    elif sizeof(node.data_type) == 4:
-      self.emit("lw")
-    elif isstruct(node.data_type):
-      self.emit(f"load {sizeof(node.data_type) // 4}")
-    else:
-      raise Exception("unknown")
+    if output:
+      if isarray(node.data_type):
+        pass
+      elif sizeof(node.data_type) == 1:
+        self.emit("lb")
+      elif sizeof(node.data_type) == 4:
+        self.emit("lw")
+      elif isstruct(node.data_type):
+        self.emit(f"load {sizeof(node.data_type) // 4}")
+      else:
+        raise Exception("unknown")
   
-  def lvalue(self, node):
+  def lvalue(self, node, output):
     if isinstance(node, NameNode):
-      self.name(node)
+      self.name(node, output)
     elif isinstance(node, StringNode):
-      self.string(node)
+      self.string(node, output)
     elif isinstance(node, IndexNode):
-      self.index(node)
+      self.index(node, output)
     elif isinstance(node, AccessNode):
-      self.access(node)
+      self.access(node, output)
     elif isinstance(node, UnaryNode) and node.op == '*':
-      self.expression(node.base)
+      self.expression(node.base, output)
     else:
       raise Exception("unknown")
   
-  def index(self, node):
+  def index(self, node, output):
     if ispointer(node.base.data_type):
-      self.value(node.base)
+      self.value(node.base, output)
     elif isarray(node.base.data_type):
-      self.lvalue(node.base)
+      self.lvalue(node.base, output)
     else:
       raise Exception("unknown")
     
-    self.expression(node.pos)
-    
-    size = sizeof(node.data_type)
-    if size > 1:
-      self.emit(f"const {size}")
-      self.emit("mul")
-    
-    self.emit("add")
-    
-    self.ax -= 1
+    self.expression(node.pos, output)
+      
+    if output:
+      size = sizeof(node.data_type)
+      if size > 1:
+        self.emit(f"const {size}")
+        self.emit("mul")
+      
+      self.emit("add")
+      
+      self.ax -= 1
   
-  def access(self, node):
+  def access(self, node, output):
     if node.direct:
-      self.lvalue(node.base)
+      self.lvalue(node.base, output)
     else:
-      self.value(node.base)
+      self.value(node.base, output)
     
-    if node.var.pos > 0:
+    if node.var.pos > 0 and output:
       self.emit(f"const {node.var.pos}")
       self.emit("add")
   
-  def name(self, node):
+  def name(self, node, output):
+    if not output:
+      return
+    
     if node.var.local:
       self.emit("fp")
       
@@ -374,18 +382,37 @@ class Gen:
       
     self.ax += 1
   
-  def binop(self, node):
+  def binop(self, node, output):
     lhs_type = node.lhs.data_type
     rhs_type = node.rhs.data_type
     
     if node.op == '=':
-      self.assign(node)
+      self.assign(node, output)
     elif node.op in [ '<', '>', '<=', '>=', '==', '!=', '&&', '||' ]:
+      self.conditional_expression(node, output)
+    else:
+      self.expression(node.lhs, output)
+      self.expression(node.rhs, output)
+      
+      if output:
+        op_instr_table = {
+          '+': 'add',
+          '-': 'sub',
+          '*': 'mul',
+          '/': 'div'
+        }
+        
+        self.emit(op_instr_table[node.op])
+        self.ax -= 2
+  
+  def conditional_expression(self, output):
+    if output:
       label_true = self.label_new()
       label_false = self.label_new()
       label_end = self.label_new()
       
       self.condition(node, label_true, label_false)
+      
       self.emit_label(label_true)
       self.emit("const 1")
       self.emit(f"jmp {label_end}")
@@ -393,37 +420,34 @@ class Gen:
       self.emit("const 0")
       self.emit_label(label_end)
     else:
-      self.expression(node.lhs)
-      self.expression(node.rhs)
-      
-      op_instr_table = {
-        '+': 'add',
-        '-': 'sub',
-        '*': 'mul',
-        '/': 'div'
-      }
-      
-      self.emit(op_instr_table[node.op])
-      self.ax -= 2
+      label_end = self.label_new()
+      self.condition(node, label_end, label_end)
+      self.emit_label(label_end)
   
-  def assign(self, node):
-    self.expression(node.rhs)
-    self.lvalue(node.lhs)
+  def assign(self, node, output):
+    self.expression(node.rhs, True)
+    self.lvalue(node.lhs, True)
     
-    if sizeof(node.data_type) == 1:
+    if sizeof(node.lhs.data_type) == 1:
       self.emit("sb")
       self.ax -= 2
-    elif sizeof(node.data_type) == 4:
+    elif sizeof(node.lhs.data_type) == 4:
       self.emit("sw")
       self.ax -= 2
-    elif isstruct(node.data_type):
-      self.emit(f"store {sizeof(node.data_type) // 4}")
-      self.ax -= sizeof(node.data_type) // 4
+    elif isstruct(node.lhs.data_type):
+      self.emit(f"store {sizeof(node.lhs.data_type) // 4}")
+      self.ax -= sizeof(node.lhs.data_type) // 4
       self.ax -= 1
     else:
       raise Exception("unknown")
+    
+    if output:
+      self.value(node.lhs, True)
   
-  def string(self, node):
+  def string(self, node, output):
+    if not output:
+      return
+    
     label = None
     
     if node.text in self.string_map:
@@ -433,8 +457,12 @@ class Gen:
       self.string_map[node.text] = label
     
     self.emit(f"const {label}")
+    self.ax += 1
   
-  def constant(self, node):
+  def constant(self, node, output):
+    if not output:
+      return
+    
     self.emit(f'const {node.value}')
     self.ax += 1
   

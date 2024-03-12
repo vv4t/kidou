@@ -1,74 +1,40 @@
-2
-fib 4
-main 64
+1
+main 4
 2
 space 0
-data 2
-%i
-call 64
+data 5
+%i %i
+call 4
 int 1
-enter 0
+enter 3
 fp
-const -12
-add
-lw
-const 2
-jge 26
-const 1
 fp
-const -16
+const 8
 add
 sw
-jmp 62
-jmp 62
-alloc 1
+const 4
 fp
-const -12
+const 8
 add
 lw
-const 1
-sub
-call 4
-free 1
-alloc 1
-fp
-const -12
-add
-lw
-const 2
-sub
-call 4
-free 1
-add
-fp
-const -16
-add
-sw
-jmp 62
-leave
-ret
-enter 1
-const 0
-fp
 sw
 fp
+const 8
+add
 lw
-const 10
-jge 99
-alloc 1
+lw
+fp
+const 4
+add
+sw
+fp
+const 4
+add
+lw
 fp
 lw
-call 4
-free 1
 const 0
 int 2
-free 2
-fp
-lw
-const 1
-add
-fp
-sw
-jmp 70
+free 3
 leave
 ret
