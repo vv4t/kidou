@@ -3,6 +3,11 @@
 
 #include <stdbool.h>
 
+typedef enum {
+  VM_EXIT,
+  VM_PRINTF,
+} status_t;
+
 #define MAX_NAME 64
 #define MAX_EXPORT 32
 
@@ -17,6 +22,14 @@ typedef enum {
   VM_MUL,
   VM_DIV,
   
+  VM_FADD,
+  VM_FSUB,
+  VM_FMUL,
+  VM_FDIV,
+  
+  VM_CVTSS2SI,
+  VM_CVTSI2SS,
+  
   VM_LW,
   VM_SW,
   VM_LB,
@@ -29,7 +42,6 @@ typedef enum {
   
   VM_NOT,
   VM_XOR,
-  VM_NEG,
   
   VM_LSH,
   VM_RSH,
@@ -67,7 +79,6 @@ typedef struct {
   int fp;
   int ip;
   
-  int status;
   int text_size;
   int data_size;
   
@@ -77,15 +88,13 @@ typedef struct {
   bool debug;
 } vm_t;
 
-bool vm_load_file(vm_t *vm, const char *path);
-vm_export_t *vm_find_export(vm_t *vm, const char *name);
-void vm_call_export(vm_t *vm, vm_export_t *vm_export);
-void vm_init(vm_t *vm);
-void vm_exec(vm_t *vm);
-void vm_info(vm_t *vm);
-int vm_pop(vm_t *vm);
+bool vm_file(vm_t *vm, const char *path);
 
-const char *op_text(op_t op);
-op_t text_op(char *text);
+void vm_printf(vm_t *vm);
+
+bool vm_call(vm_t *vm, const char *name);
+void vm_init(vm_t *vm);
+int vm_exec(vm_t *vm);
+void vm_info(vm_t *vm);
 
 #endif

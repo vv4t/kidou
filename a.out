@@ -2,39 +2,19 @@
 main 4
 2
 space 0
-data 5
-%i %i
+data 2
+%i
 call 4
-int 1
-enter 3
+int 0
+enter 1
+const 3.0
+cvtss2si
 fp
-fp
-const 8
-add
 sw
-const 4
-fp
-const 8
-add
-lw
-sw
-fp
-const 8
-add
-lw
-lw
-fp
-const 4
-add
-sw
-fp
-const 4
-add
-lw
 fp
 lw
 const 0
-int 2
-free 3
+int 1
+free 2
 leave
 ret

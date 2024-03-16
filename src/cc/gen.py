@@ -17,7 +17,7 @@ class Gen:
     self.ax = 0
     
     self.emit('call .main')
-    self.emit('int 1')
+    self.emit('int 0')
   
     self.unit()
     
@@ -238,7 +238,7 @@ class Gen:
       self.expression(arg)
       arg_size += max(sizeof(arg.data_type), 4)
     
-    self.emit("int 2")
+    self.emit("int 1")
     
     if arg_size > 0:
       self.emit(f'free {arg_size // 4}')
@@ -277,8 +277,19 @@ class Gen:
       self.unary(node, output)
     elif isinstance(node, CallNode):
       self.call(node, output)
+    elif isinstance(node, CastNode):
+      self.cast(node, output)
     else:
       raise Exception("unknown")
+  
+  def cast(self, node, output):
+    self.expression(node.base, output)
+    
+    if output:
+      if isint(node.data_type) and isfloat(node.base.data_type):
+        self.emit("cvtss2si")
+      elif isfloat(node.data_type) and isint(node.base.data_type):
+        self.emit("cvtsi2ss")
   
   def call(self, node, output):
     return_type = base_type(node.base.data_type)
@@ -394,15 +405,20 @@ class Gen:
       self.expression(node.lhs, output)
       self.expression(node.rhs, output)
       
+      op_table = {
+        '+': 'add',
+        '-': 'sub',
+        '*': 'mul',
+        '/': 'div'
+      }
+      
       if output:
-        op_instr_table = {
-          '+': 'add',
-          '-': 'sub',
-          '*': 'mul',
-          '/': 'div'
-        }
+        op = op_table[node.op]
         
-        self.emit(op_instr_table[node.op])
+        if isfloat(node.data_type):
+          op = "f" + op
+        
+        self.emit(op)
         self.ax -= 2
   
   def conditional_expression(self, output):

@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 
+vm_export_t *vm_find(vm_t *vm, const char *name);
 op_t vm_next(vm_t *vm);
 void vm_push(vm_t *vm, int n);
 int vm_pop(vm_t *vm);
@@ -12,23 +13,16 @@ void vm_store(vm_t *vm, int a, int b);
 op_t text_op(char *text);
 const char *op_text(op_t op);
 
-typedef enum {
-  STATUS_NONE,
-  STATUS_EXIT,
-  STATUS_PRINTF,
-} status_t;
-
 void vm_init(vm_t *vm)
 {
   vm->sp = -1;
   vm->ip = 0;
-  vm->status = 0;
   vm->debug = false;
   
   memset(vm->stack, 0, sizeof(vm->stack));
 }
 
-bool vm_load_file(vm_t *vm, const char *path)
+bool vm_file(vm_t *vm, const char *path)
 {
   FILE *file = fopen(path, "rb");
   
@@ -86,7 +80,7 @@ bool vm_load_file(vm_t *vm, const char *path)
   
   vm->text_size = vm->ip;
   vm->text[vm->ip++] = VM_INT;
-  vm->text[vm->ip++] = STATUS_EXIT;
+  vm->text[vm->ip++] = VM_EXIT;
   
   return true;
 vm_load_file_ERROR:
@@ -114,9 +108,17 @@ void vm_printf(vm_t *vm)
         printf("%i", *((int*) va_arg));
         va_arg -= 4;
         break;
+      case 'f':
+        printf("%f", *((float*) va_arg));
+        va_arg -= 4;
+        break;
       case 's':
         printf("%s", &stack[*((int*) va_arg)]);
         va_arg -= 4;
+        break;
+      default:
+        putc('%', stdout);
+        putc(*c, stdout);
         break;
       }
       
@@ -129,24 +131,21 @@ void vm_printf(vm_t *vm)
   putc('\n', stdout);
 }
 
-void vm_call_export(vm_t *vm, vm_export_t *vm_export)
+bool vm_call(vm_t *vm, const char *name)
 {
-  vm->status = STATUS_NONE;
+  vm_export_t *vm_export = vm_find(vm, name);
+  
+  if (!vm_export) {
+    return false;
+  }
+  
   vm_push(vm, vm->text_size);
   vm->ip = vm_export->pos;
   
-  while (vm->status != STATUS_EXIT) {
-    vm_exec(vm);
-    
-    switch (vm->status) {
-    case STATUS_PRINTF:
-      vm_printf(vm);
-      break;
-    }
-  }
+  return true;
 }
 
-vm_export_t *vm_find_export(vm_t *vm, const char *name)
+vm_export_t *vm_find(vm_t *vm, const char *name)
 {
   for (int i = 0; i < vm->num_export; i++) {
     if (strcmp(vm->vm_export[i].name, name) == 0) {
@@ -177,11 +176,13 @@ void vm_info(vm_t *vm)
   }
 }
 
-void vm_exec(vm_t *vm)
+int vm_exec(vm_t *vm)
 {
   int a;
   int b;
   int c;
+  
+  float x;
   
   while (1) {
     op_t op = vm_next(vm);
@@ -215,6 +216,41 @@ void vm_exec(vm_t *vm)
       b = vm_pop(vm);
       a = vm_pop(vm);
       vm_push(vm, a / b);
+      break;
+    case VM_FADD:
+      b = vm_pop(vm);
+      a = vm_pop(vm);
+      x = *((float*) &a) + *((float*) &b);
+      vm_push(vm, *((int*) &x));
+      break;
+    case VM_FSUB:
+      b = vm_pop(vm);
+      a = vm_pop(vm);
+      x = *((float*) &a) - *((float*) &b);
+      vm_push(vm, *((int*) &x));
+      break;
+    case VM_FMUL:
+      b = vm_pop(vm);
+      a = vm_pop(vm);
+      x = *((float*) &a) * *((float*) &b);
+      vm_push(vm, *((int*) &x));
+      break;
+    case VM_FDIV:
+      b = vm_pop(vm);
+      a = vm_pop(vm);
+      x = *((float*) &a) / *((float*) &b);
+      vm_push(vm, *((int*) &x));
+      break;
+    case VM_CVTSS2SI:
+      a = vm_pop(vm);
+      x = *((float*) &a);
+      a = x;
+      vm_push(vm, a);
+      break;
+    case VM_CVTSI2SS:
+      a = vm_pop(vm);
+      x = a;
+      vm_push(vm, *((int*) &x));
       break;
     case VM_LW:
       a = vm_pop(vm);
@@ -262,10 +298,6 @@ void vm_exec(vm_t *vm)
       b = vm_pop(vm);
       a = vm_pop(vm);
       vm_push(vm, a ^ b);
-      break;
-    case VM_NEG:
-      a = vm_pop(vm);
-      vm_push(vm, -a);
       break;
     case VM_LSH:
       b = vm_pop(vm);
@@ -346,9 +378,7 @@ void vm_exec(vm_t *vm)
       vm->fp = a;
       break;
     case VM_INT:
-      a = vm_next(vm);
-      vm->status = a;
-      return;
+      return vm_next(vm);
     }
     
     if (vm->debug) {
@@ -398,6 +428,12 @@ const char *op_text(op_t op)
     "sub",
     "mul",
     "div",
+    "fadd",
+    "fsub",
+    "fmul",
+    "fdiv",
+    "cvtss2si",
+    "cvtsi2ss",
     "lw",
     "sw",
     "lb",
@@ -408,7 +444,6 @@ const char *op_text(op_t op)
     "or",
     "not",
     "xor",
-    "neg",
     "lsh",
     "rsh",
     "jmp",
@@ -439,9 +474,15 @@ op_t text_op(char *text)
   }
   
   char *endptr;
-  int result = strtol(text, &endptr, 10);
+  
+  int result1 = strtol(text, &endptr, 10);
   if (*endptr == '\0') {
-    return result;
+    return result1;
+  }
+  
+  float result2 = strtof(text, &endptr);
+  if (*endptr == '\0') {
+    return *((int*) &result2);
   }
   
   return 0;

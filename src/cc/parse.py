@@ -185,7 +185,6 @@ class Parse:
       return Var(DataType(specifier, None), None)
     
     if isstruct(var.data_type) and sizeof(var.data_type) == 0:
-      print(var.data_type)
       raise TokenError(self.lex.token, f"declaring '{var.name}' with incomplete type '{var.data_type}'")
     
     if isvoid(var.data_type):
@@ -254,6 +253,7 @@ class Parse:
   
   def specifier(self):
     name = find_match([
+      lambda : self.lex.accept("float"),
       lambda : self.lex.accept("int"),
       lambda : self.lex.accept("char"),
       lambda : self.lex.accept("void"),
@@ -309,6 +309,9 @@ class Parse:
     
     lhs = self.binop_set(set_num + 1)
     
+    if not lhs:
+      return None
+    
     op = find_match([ (lambda y: (lambda : self.lex.accept(y)))(x) for x in op_set[set_num] ])
     
     if op and op.text in op_set[0]:
@@ -320,13 +323,12 @@ class Parse:
       lhs = self.binop_check(lhs, '=', rhs)
     else:
       while op:
-        if not op:
-          return lhs
-        
         rhs = self.expect(self.binop_set(set_num + 1), "expression")
         lhs = self.binop_check(lhs, op.text, rhs)
         
         op = find_match([ (lambda y: (lambda : self.lex.accept(y)))(x) for x in op_set[set_num] ])
+      
+      return lhs
     
     return lhs
   
@@ -342,12 +344,54 @@ class Parse:
     return BinopNode(lhs, op, rhs, data_type)
   
   def unary(self):
-    if self.lex.accept("&"):
+    if self.lex.accept("-"):
+      return self.negative()
+    elif self.lex.accept("&"):
       return self.address_of()
     elif self.lex.accept("*"):
       return self.dereference()
+    elif self.lex.match("("):
+      return self.cast()
     else:
       return self.postfix()
+  
+  def cast(self):
+    if not self.lex.accept("("):
+      return None
+    
+    specifier = self.specifier()
+    
+    if not specifier:
+      body = self.expect(self.expression(), "expression")
+      self.lex.expect(")")
+      return body
+    
+    self.lex.expect(")")
+    
+    data_type = DataType(specifier)
+    base = self.expect(self.unary(), "unary-expression")
+    
+    check = (
+      isint(data_type) and isint(base.data_type) or
+      isfloat(data_type) and isint(base.data_type) or
+      isint(data_type) and isfloat(base.data_type)
+    )
+    
+    if not check:
+      raise TokenError(self.lex.token, f"cannot cast '{data_type}' to '{base.data_type}'")
+    
+    return CastNode(base, data_type)
+  
+  def negative(self):
+    base = self.expect(self.unary(), "unary-expression")
+    
+    if isstruct(base.data_type) or isvoid(base.data_type) or ispointer(base.data_type) or isarray(base.data_type):
+      raise TokenError(self.lex.token, f"wrong type argument to unary minus")
+    
+    if isfloat(base.data_type):
+      return self.binop_check(base, '*', ConstantNode(-1.0, type_specifier("float")))
+    else:
+      return self.binop_check(base, '*', ConstantNode(-1, type_specifier("int")))
   
   def dereference(self):
     base = self.expect(self.unary(), "unary-expression")
@@ -426,6 +470,10 @@ class Parse:
     if self.lex.match("Number"):
       token = self.lex.pop()
       return ConstantNode(token.value, type_specifier("int"))
+    
+    if self.lex.match("Decimal"):
+      token = self.lex.pop()
+      return ConstantNode(token.value, type_specifier("float"))
     
     if self.lex.match("Identifier"):
       token = self.lex.pop()

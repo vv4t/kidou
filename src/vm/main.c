@@ -14,9 +14,24 @@ int main(int argc, char *argv[])
     }
   }
   
-  vm_load_file(&vm, "a.out");
-  vm_export_t *export_main = vm_find_export(&vm, "main");
-  vm_call_export(&vm, export_main);
+  vm_file(&vm, "a.out");
+  
+  if (!vm_call(&vm, "main")) {
+    return 1;
+  }
+  
+  bool quit = false;
+  
+  while (!quit) {
+    switch (vm_exec(&vm)) {
+    case VM_EXIT:
+      quit = true;
+      break;
+    case VM_PRINTF:
+      vm_printf(&vm);
+      break;
+    }
+  }
   
   return 0;
 }

@@ -99,7 +99,7 @@ def var_sizeof(data_type):
     return sizeof(data_type)
 
 def sizeof(data_type):
-  specifier_size = { "int": 4, "char": 1 }
+  specifier_size = { "float": 4, "int": 4, "char": 1 }
   
   if not data_type.declarator:
     if isstruct(data_type):
@@ -115,9 +115,13 @@ def c_type_check(a, op, b):
   check = False
   
   check = (
+    not isfloat(a) and not isfloat(b) and
     not isstruct(a) and not isstruct(b) and
     not isvoid(a) and not isvoid(b)
   )
+  
+  if not check:
+    check = isfloat(a) and isfloat(b)
   
   if not check and op == '=':
     check = isstruct(a) and isstruct(b) and a.specifier.struct_scope == b.specifier.struct_scope
@@ -132,6 +136,12 @@ def islvalue(node):
     isinstance(node, AccessNode) or
     (isinstance(node, UnaryNode) and node.op == '*')
   )
+
+def isint(data_type):
+  return data_type.specifier.name == "int" and not data_type.declarator or ispointer(data_type)
+
+def isfloat(data_type):
+  return data_type.specifier.name == "float" and not data_type.declarator
 
 def isvoid(data_type):
   return data_type.specifier.name == "void" and not data_type.declarator
@@ -350,6 +360,14 @@ class BinopNode:
   
   def __repr__(self):
     return f'({self.lhs}) {self.op} ({self.rhs})'
+
+class CastNode:
+  def __init__(self, base, data_type):
+    self.base = base
+    self.data_type = data_type
+  
+  def __repr__(self):
+    return f'({self.data_type}) ({self.base})'
 
 class UnaryNode:
   def __init__(self, op, base, data_type):
