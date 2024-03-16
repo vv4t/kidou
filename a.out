@@ -1,29 +1,127 @@
-1
-main 4
+4
+vec2 4
+add 36
+print_vec2 86
+main 109
 2
 space 0
-data 2
-%f
-call 4
+data 12
+vec2(%i, %i)
+call 109
 int 0
-enter 4
+enter 2
 fp
-load 2
-fp
-const 8
+const -12
 add
-store 2
-const 3.0
+lw
 fp
-const 8
+sw
+fp
+const -16
+add
+lw
+fp
+const 4
 add
 sw
 fp
-const 8
+load 2
+fp
+const -24
+add
+store 2
+jmp 34
+leave
+ret
+enter 2
+fp
+const -16
+add
+lw
+fp
+const -24
+add
+lw
+add
+fp
+sw
+fp
+const -16
+add
+const 4
+add
+lw
+fp
+const -24
+add
+const 4
+add
+lw
+add
+fp
+const 4
+add
+sw
+fp
+load 2
+fp
+const -32
+add
+store 2
+jmp 84
+leave
+ret
+enter 0
+fp
+const -16
+add
+const 4
+add
+lw
+fp
+const -16
 add
 lw
 const 0
 int 1
+free 3
+leave
+ret
+enter 6
+alloc 2
+const 4
+const 3
+call 4
+free 2
+fp
+store 2
+alloc 2
+const 6
+const 5
+call 4
+free 2
+fp
+const 8
+add
+store 2
+alloc 2
+fp
+const 8
+add
+load 2
+fp
+load 2
+call 36
+free 4
+fp
+const 16
+add
+store 2
+fp
+const 16
+add
+load 2
+call 86
 free 2
 leave
 ret

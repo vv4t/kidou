@@ -1,4 +1,3 @@
-import math
 import sys
 from parse import *
 
@@ -63,7 +62,7 @@ class Gen:
       text += string
       text += "\n"
       self.text = self.text.replace(label, str(size))
-      size = (size + 4) // 4
+      size = (size + 3) // 4
     
     self.text = text + self.text
   
@@ -85,7 +84,7 @@ class Gen:
     
     self.export_label(node.name)
     self.emit_label(f".{node.name}")
-    self.emit(f'enter {math.ceil(node.body.scope.size / 4)}')
+    self.emit(f'enter {(node.body.scope.size + 3) // 4}')
     
     self.current_function = node
     self.return_label = self.label_new()
@@ -296,7 +295,7 @@ class Gen:
     
     if not isvoid(return_type):
       size = sizeof(return_type)
-      self.emit(f"alloc {math.ceil(size / 4)}")
+      self.emit(f"alloc {(size + 3) // 4}")
     
     for arg in reversed(node.arg):
       self.expression(arg)
@@ -306,12 +305,12 @@ class Gen:
     else:
       raise Exception("unknown")
     
-    arg_size = math.ceil(node.base.data_type.declarator.scope_param.size / 4)
+    arg_size = (node.base.data_type.declarator.scope_param.size + 3) // 4
     if arg_size > 0:
       self.emit(f'free {arg_size}')
     
     if not output and not isvoid(return_type):
-      self.emit(f"free {math.ceil(sizeof(return_type) / 4)}")
+      self.emit(f"free {(sizeof(return_type) + 3) // 4}")
   
   def unary(self, node, output):
     if node.op == '&':

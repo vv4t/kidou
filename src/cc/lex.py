@@ -292,7 +292,7 @@ class Lex:
     return None
   
   def match_number(self):
-    match = re.match("^[0-9]+.[0-9]+", self.text)
+    match = re.match("^[0-9]+\.[0-9]+", self.text)
     
     if match:
       return Token("Decimal", match.group(), self.line, self.src, value=float(match.group()))
