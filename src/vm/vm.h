@@ -81,6 +81,7 @@ typedef struct {
   
   int text_size;
   int data_size;
+  char *va_arg;
   
   int text[1024];
   int stack[1024];
@@ -91,6 +92,11 @@ typedef struct {
 bool vm_file(vm_t *vm, const char *path);
 
 void vm_printf(vm_t *vm);
+
+void vm_return_int(vm_t *vm, int value);
+void vm_return_float(vm_t *vm, float value);
+int vm_arg_int(vm_t *vm);
+float vm_arg_float(vm_t *vm);
 
 bool vm_call(vm_t *vm, const char *name);
 void vm_init(vm_t *vm);

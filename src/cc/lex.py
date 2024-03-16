@@ -239,6 +239,7 @@ class Lex:
     match = re.match("^[a-zA-Z_][a-zA-Z0-9_]*", self.text)
     
     keyword = [
+      "syscall",
       "void",
       "float",
       "int",

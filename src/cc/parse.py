@@ -31,10 +31,17 @@ class Parse:
     if self.lex.accept(';'):
       return var
     
-    var.body = FunctionBody(Scope(param=var.data_type.declarator.scope_param, parent=self.context.scope_global))
-    self.context.bind(var)
-    var.body.body = self.expect(self.compound_statement(), "compound-statement")
-    self.context.unbind()
+    if self.lex.accept("syscall"):
+      self.lex.expect("(")
+      num = self.lex.expect("Number")
+      self.lex.expect(")")
+      self.lex.expect(";")
+      var.body = num.value
+    else:
+      var.body = FunctionBody(Scope(param=var.data_type.declarator.scope_param, parent=self.context.scope_global))
+      self.context.bind(var)
+      var.body.body = self.expect(self.compound_statement(), "compound-statement")
+      self.context.unbind()
     
     return var
   
@@ -519,6 +526,10 @@ class Parse:
     
     while self.lex.accept(','):
       body = self.expect(self.expression(), "argument-expression")
+      
+      if isvoid(body.data_type):
+        raise TokenError(self.lex.token, f"cannot have '{body}' of type 'void' as argument")
+      
       arg.append(body)
     
     return arg

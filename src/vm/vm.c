@@ -88,15 +88,34 @@ vm_load_file_ERROR:
   return false;
 }
 
+void vm_return_int(vm_t *vm, int value)
+{
+  *((int*) vm->va_arg) = value;
+}
+
+void vvm_return_float(vm_t *vm, float value)
+{
+  *((float*) vm->va_arg) = value;
+}
+
+int vm_arg_int(vm_t *vm)
+{
+  int value = *((int*) vm->va_arg);
+  vm->va_arg -= 4;
+  return value;
+}
+
+float vm_arg_float(vm_t *vm)
+{
+  float value = *((float*) vm->va_arg);
+  vm->va_arg -= 4;
+  return value;
+}
+
 void vm_printf(vm_t *vm)
 {
   char *stack = (char*) vm->stack;
-  char *va_arg = (char*) &vm->stack[vm->sp];
-  
-  char *format = &stack[*((int*) va_arg)];
-  va_arg -= 4;
-  
-  char *c = format;
+  char *c = &stack[vm_arg_int(vm)];
   
   printf("> ");
   
@@ -105,16 +124,13 @@ void vm_printf(vm_t *vm)
       c++;
       switch (*c) {
       case 'i':
-        printf("%i", *((int*) va_arg));
-        va_arg -= 4;
+        printf("%i", vm_arg_int(vm));
         break;
       case 'f':
-        printf("%f", *((float*) va_arg));
-        va_arg -= 4;
+        printf("%f", vm_arg_float(vm));
         break;
       case 's':
-        printf("%s", &stack[*((int*) va_arg)]);
-        va_arg -= 4;
+        printf("%s", &stack[vm_arg_int(vm)]);
         break;
       default:
         putc('%', stdout);
@@ -378,6 +394,7 @@ int vm_exec(vm_t *vm)
       vm->fp = a;
       break;
     case VM_INT:
+      vm->va_arg = (char*) &vm->stack[vm->sp];
       return vm_next(vm);
     }
     

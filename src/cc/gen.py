@@ -76,7 +76,7 @@ class Gen:
   
   def unit(self):
     for var in self.parse.context.scope_global.var.values():
-      if isfunction(var.data_type):
+      if isfunction(var.data_type) and not isinstance(var.body, int):
         self.function(var)
   
   def function(self, node):
@@ -301,7 +301,10 @@ class Gen:
       self.expression(arg)
     
     if isinstance(node.base, NameNode):
-      self.emit(f"call .{node.base.var.name}")
+      if isinstance(node.base.var.body, int):
+        self.emit(f"int {node.base.var.body}")
+      else:
+        self.emit(f"call .{node.base.var.name}")
     else:
       raise Exception("unknown")
     

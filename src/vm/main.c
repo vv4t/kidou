@@ -30,6 +30,10 @@ int main(int argc, char *argv[])
     case VM_PRINTF:
       vm_printf(&vm);
       break;
+    case 2:
+      printf("%i\n", vm_arg_int(&vm));
+      vm_return_int(&vm, 3);
+      break;
     }
   }
   

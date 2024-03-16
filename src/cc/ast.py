@@ -405,7 +405,7 @@ class CallNode:
   
   def __repr__(self):
     arg = "(" + ", ".join([ str(a) for a in self.arg ]) + ")"
-    return f"{base}{arg}"
+    return f"{self.base}{arg}"
 
 class StringNode:
   def __init__(self, text, data_type):
