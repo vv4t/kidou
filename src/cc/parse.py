@@ -374,7 +374,8 @@ class Parse:
     check = (
       isint(data_type) and isint(base.data_type) or
       isfloat(data_type) and isint(base.data_type) or
-      isint(data_type) and isfloat(base.data_type)
+      isint(data_type) and isfloat(base.data_type) or
+      c_type_check(data_type, '=', base.data_type)
     )
     
     if not check:

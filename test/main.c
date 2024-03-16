@@ -1,7 +1,13 @@
+struct thing {
+  float x;
+  float y;
+};
 
 void main()
 {
-  int x = (int) 3.0;
+  struct thing b;
+  struct thing x = (struct thing) b;
+  x.x = 3.0;
   
-  printf "%i", x;
+  printf "%f", x.x;
 }

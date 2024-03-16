@@ -3,15 +3,24 @@ main 4
 2
 space 0
 data 2
-%i
+%f
 call 4
 int 0
-enter 1
-const 3.0
-cvtss2si
+enter 4
 fp
+load 2
+fp
+const 8
+add
+store 2
+const 3.0
+fp
+const 8
+add
 sw
 fp
+const 8
+add
 lw
 const 0
 int 1
