@@ -1,21 +1,13 @@
-.PHONY=default run debug test
+.PHONY=SDL default debug autotest
+SHELL=/bin/bash
 
-default: vm run
+default: bin/vm
 
-vm: src/vm/*.c
-	gcc src/vm/*.c -o vm
+bin/vm: src/vm/*.c
+	gcc src/vm/*.c -lm -lSDL2 -o bin/vm
 
-run:
-	./cc test/main.c
-	./vm
-
-debug:
-	./cc test/main.c --dump
-	./vm --debug
-
-test:
-	./kidou test/main.c
-	./kidou test/bubble_sort.c
-	./kidou test/fib.c
-	./kidou test/sieve.c
-	./kidou test/vec2.c
+autotest:
+	source kidou && kidou test/bubble_sort.c
+	source kidou && kidou test/fib.c
+	source kidou && kidou test/sieve.c
+	source kidou && kidou test/vec2.c

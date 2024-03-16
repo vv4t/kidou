@@ -1,14 +1,21 @@
-#!/bin/sh
+#!/bin/bash
 
-if [ "$#" -ne 1 ]
-then
-  echo "usage: $0 <file>"
-  exit 1
-fi
+kidou_dir="$(pwd)"
 
-./cc $1
+function kidou()
+{
+  if [ "$#" -ne 1 ]; then
+    echo "usage: kidou <file>"
+    return
+  fi
 
-if [ $? -eq 0 ]
-then
-  ./vm
-fi
+  python "$kidou_dir/src/cc/cc.py" $@
+
+  if [ $? -eq 0 ]; then
+    "$kidou_dir/bin/vm"
+  fi
+  
+  if [ -f a.out ]; then
+    rm a.out
+  fi
+}

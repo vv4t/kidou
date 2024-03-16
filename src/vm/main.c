@@ -1,41 +1,31 @@
 #include <stdio.h>
-
-#include <string.h>
 #include "vm.h"
+#include "sdl.h"
+
+void sdl_f(vm_t *vm)
+{
+  int width = vm_arg_int(vm);
+  int height = vm_arg_int(vm);
+  
+  sdl_window(width, height);
+}
 
 int main(int argc, char *argv[])
 {
-  vm_t vm;
+  static vm_t vm;
   vm_init(&vm);
   
-  for (int i = 0; i < argc; i++) {
-    if (strcmp(argv[i], "--debug") == 0) {
-      vm.debug = true;
-    }
-  }
+  sdl_init(&vm);
   
-  vm_file(&vm, "a.out");
+  vm_syscall_bind(&vm, 1, sdl_f);
   
-  if (!vm_call(&vm, "main")) {
+  if (!vm_file(&vm, "a.out")) {
     return 1;
   }
+   
+  vm_call(&vm, "main");
   
-  bool quit = false;
-  
-  while (!quit) {
-    switch (vm_exec(&vm)) {
-    case VM_EXIT:
-      quit = true;
-      break;
-    case VM_PRINTF:
-      vm_printf(&vm);
-      break;
-    case 2:
-      printf("%i\n", vm_arg_int(&vm));
-      vm_return_int(&vm, 3);
-      break;
-    }
-  }
+  while (sdl_exec());
   
   return 0;
 }

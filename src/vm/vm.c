@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 
+void vm_printf(vm_t *vm);
 vm_export_t *vm_find(vm_t *vm, const char *name);
 op_t vm_next(vm_t *vm);
 void vm_push(vm_t *vm, int n);
@@ -12,12 +13,20 @@ void vm_load(vm_t *vm, int a, int b);
 void vm_store(vm_t *vm, int a, int b);
 op_t text_op(char *text);
 const char *op_text(op_t op);
+int vm_exec(vm_t *vm);
 
 void vm_init(vm_t *vm)
 {
   vm->sp = -1;
   vm->ip = 0;
   vm->debug = false;
+  vm->num_export = 0;
+  
+  for (int i = 0; i < MAX_SYSCALL; i++) {
+    vm->vm_syscall[i] = NULL;
+  }
+  
+  vm_syscall_bind(vm, 0, vm_printf);
   
   memset(vm->stack, 0, sizeof(vm->stack));
 }
@@ -80,7 +89,7 @@ bool vm_file(vm_t *vm, const char *path)
   
   vm->text_size = vm->ip;
   vm->text[vm->ip++] = VM_INT;
-  vm->text[vm->ip++] = VM_EXIT;
+  vm->text[vm->ip++] = -1;
   
   return true;
 vm_load_file_ERROR:
@@ -93,7 +102,7 @@ void vm_return_int(vm_t *vm, int value)
   *((int*) vm->va_arg) = value;
 }
 
-void vvm_return_float(vm_t *vm, float value)
+void vm_return_float(vm_t *vm, float value)
 {
   *((float*) vm->va_arg) = value;
 }
@@ -116,8 +125,6 @@ void vm_printf(vm_t *vm)
 {
   char *stack = (char*) vm->stack;
   char *c = &stack[vm_arg_int(vm)];
-  
-  printf("> ");
   
   while (*c) {
     if (*c == '%') {
@@ -147,16 +154,31 @@ void vm_printf(vm_t *vm)
   putc('\n', stdout);
 }
 
+void vm_syscall_bind(vm_t *vm, int status, vm_syscall_t vm_syscall)
+{
+  if (status < MAX_SYSCALL) {
+    vm->vm_syscall[status] = vm_syscall;
+  }
+}
+
 bool vm_call(vm_t *vm, const char *name)
 {
   vm_export_t *vm_export = vm_find(vm, name);
   
   if (!vm_export) {
+    fprintf(stderr, "error:vm_call: export '%s' does not exist.\n", name);
     return false;
   }
   
   vm_push(vm, vm->text_size);
   vm->ip = vm_export->pos;
+  
+  int status;
+  while ((status = vm_exec(vm)) >= 0) {
+    if (status < MAX_SYSCALL && vm->vm_syscall[status]) {
+      vm->vm_syscall[status](vm);
+    }
+  }
   
   return true;
 }

@@ -3,13 +3,9 @@
 
 #include <stdbool.h>
 
-typedef enum {
-  VM_EXIT,
-  VM_PRINTF,
-} status_t;
-
 #define MAX_NAME 64
 #define MAX_EXPORT 32
+#define MAX_SYSCALL 16
 
 typedef enum {
   VM_CONST,
@@ -71,7 +67,13 @@ typedef struct {
   int pos;
 } vm_export_t;
 
-typedef struct {
+typedef struct vm_s vm_t;
+
+typedef void (*vm_syscall_t)(vm_t *vm);
+
+typedef struct vm_s {
+  vm_syscall_t vm_syscall[MAX_SYSCALL];
+  
   vm_export_t vm_export[MAX_EXPORT];
   int num_export;
   
@@ -91,16 +93,15 @@ typedef struct {
 
 bool vm_file(vm_t *vm, const char *path);
 
-void vm_printf(vm_t *vm);
-
 void vm_return_int(vm_t *vm, int value);
 void vm_return_float(vm_t *vm, float value);
-int vm_arg_int(vm_t *vm);
 float vm_arg_float(vm_t *vm);
+int vm_arg_int(vm_t *vm);
+
+void vm_syscall_bind(vm_t *vm, int status, vm_syscall_t vm_syscall);
 
 bool vm_call(vm_t *vm, const char *name);
 void vm_init(vm_t *vm);
-int vm_exec(vm_t *vm);
 void vm_info(vm_t *vm);
 
 #endif

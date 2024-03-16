@@ -120,6 +120,7 @@ class Gen:
     
     if self.ax > 0:
       self.emit(f"free {self.ax}")
+      print("WHY")
       self.ax = 0
   
   def var_statement(self, node):
@@ -237,7 +238,7 @@ class Gen:
       self.expression(arg)
       arg_size += max(sizeof(arg.data_type), 4)
     
-    self.emit("int 1")
+    self.emit("int 0")
     
     if arg_size > 0:
       self.emit(f'free {arg_size // 4}')
@@ -311,6 +312,7 @@ class Gen:
     arg_size = (node.base.data_type.declarator.scope_param.size + 3) // 4
     if arg_size > 0:
       self.emit(f'free {arg_size}')
+      self.ax -= arg_size
     
     if not output and not isvoid(return_type):
       self.emit(f"free {(sizeof(return_type) + 3) // 4}")
