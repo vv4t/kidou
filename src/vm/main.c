@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
   sdl_init(&vm);
   
   vm_syscall_bind(&vm, 1, sdl_f);
-  vm_syscall_bind(&vm, 5, rand_f);
+  vm_syscall_bind(&vm, 6, rand_f);
   
   if (!vm_file(&vm, "a.out")) {
     return 1;

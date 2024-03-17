@@ -10,6 +10,7 @@ static struct {
 } sdl;
 
 void line_f(vm_t *vm);
+void circle_f(vm_t *vm);
 void cos_f(vm_t *vm);
 void sin_f(vm_t *vm);
 
@@ -39,8 +40,9 @@ void sdl_window(int width, int height)
   sdl.renderer = SDL_CreateRenderer(sdl.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
   
   vm_syscall_bind(sdl.vm, 2, line_f);
-  vm_syscall_bind(sdl.vm, 3, cos_f);
-  vm_syscall_bind(sdl.vm, 4, sin_f);
+  vm_syscall_bind(sdl.vm, 3, circle_f);
+  vm_syscall_bind(sdl.vm, 4, cos_f);
+  vm_syscall_bind(sdl.vm, 5, sin_f);
   
   sdl.prev_time = SDL_GetTicks();
   sdl.lag_time = 0;
@@ -93,6 +95,25 @@ void line_f(vm_t *vm)
   int y1 = vm_arg_int(vm);
 
   SDL_RenderDrawLine(sdl.renderer, x0, y0, x1, y1);
+}
+
+void circle_f(vm_t *vm)
+{
+  int x = vm_arg_int(vm);
+  int y = vm_arg_int(vm);
+  int r = vm_arg_int(vm);
+  
+  float d_deg = 2.0 * M_PI * 0.1;
+  
+  for (float i = 0.0; i < 10.0; i += 1.0) {
+    int x0 = x + (int) (cos(i * d_deg) * (float) r);
+    int y0 = y + (int) (sin(i * d_deg) * (float) r);
+    
+    int x1 = x + (int) (cos((i + 1.0) * d_deg) * (float) r);
+    int y1 = y + (int) (sin((i + 1.0) * d_deg) * (float) r);
+    
+    SDL_RenderDrawLine(sdl.renderer, x0, y0, x1, y1);
+  }
 }
 
 void cos_f(vm_t *vm)

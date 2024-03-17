@@ -83,7 +83,7 @@ class Parse:
     self.lex.expect(';')
     step = self.expression()
     self.lex.expect(")")
-    body = self.expect(self.compound_statement(), "for-statement-body")
+    body = self.expect(self.statement(), "for-statement-body")
     self.context.scope_join()
     
     node = ForStatement(init, condition, step, body)
@@ -99,7 +99,7 @@ class Parse:
     self.lex.expect(")")
     
     self.context.scope_fork()
-    body = self.expect(self.compound_statement(), "while-statement-body")
+    body = self.expect(self.statement(), "while-statement-body")
     self.context.scope_join()
     
     node = WhileStatement(condition, body)
@@ -115,7 +115,7 @@ class Parse:
     self.lex.expect(")")
     
     self.context.scope_fork()
-    body = self.expect(self.compound_statement(), "if-statement-body")
+    body = self.expect(self.statement(), "if-statement-body")
     self.context.scope_join()
     
     else_if = None
