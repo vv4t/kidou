@@ -1,0 +1,214 @@
+1
+main 4
+2
+space 0
+data 2
+%i
+call 4
+int 0
+enter 69
+const 0
+fp
+const 256
+add
+sw
+fp
+const 256
+add
+lw
+const 64
+jge 57
+alloc 1
+int 5
+fp
+fp
+const 256
+add
+lw
+const 4
+mul
+add
+sw
+fp
+const 256
+add
+lw
+const 1
+add
+fp
+const 256
+add
+sw
+fp
+const 256
+add
+lw
+jmp 13
+const 0
+fp
+const 260
+add
+sw
+fp
+const 260
+add
+lw
+const 64
+jge 225
+const 0
+fp
+const 264
+add
+sw
+fp
+const 264
+add
+lw
+const 64
+fp
+const 260
+add
+lw
+sub
+const 1
+sub
+jge 205
+fp
+fp
+const 264
+add
+lw
+const 4
+mul
+add
+lw
+fp
+fp
+const 264
+add
+lw
+const 1
+add
+const 4
+mul
+add
+lw
+jle 185
+fp
+fp
+const 264
+add
+lw
+const 4
+mul
+add
+lw
+fp
+const 268
+add
+sw
+fp
+fp
+const 264
+add
+lw
+const 1
+add
+const 4
+mul
+add
+lw
+fp
+fp
+const 264
+add
+lw
+const 4
+mul
+add
+sw
+fp
+const 268
+add
+lw
+fp
+fp
+const 264
+add
+lw
+const 1
+add
+const 4
+mul
+add
+sw
+fp
+const 264
+add
+lw
+const 1
+add
+fp
+const 264
+add
+sw
+fp
+const 264
+add
+lw
+jmp 80
+fp
+const 260
+add
+lw
+const 1
+add
+fp
+const 260
+add
+sw
+fp
+const 260
+add
+lw
+jmp 64
+const 0
+fp
+const 272
+add
+sw
+fp
+const 272
+add
+lw
+const 64
+jge 278
+fp
+fp
+const 272
+add
+lw
+const 4
+mul
+add
+lw
+const 0
+int 0
+free 2
+fp
+const 272
+add
+lw
+const 1
+add
+fp
+const 272
+add
+sw
+fp
+const 272
+add
+lw
+jmp 232
+leave
+ret

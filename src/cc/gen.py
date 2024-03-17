@@ -14,9 +14,6 @@ class Gen:
     self.current_function = None
     self.return_label = None
     self.ax = 0
-    
-    self.emit('call .main')
-    self.emit('int 0')
   
     self.unit()
     
@@ -120,7 +117,6 @@ class Gen:
     
     if self.ax > 0:
       self.emit(f"free {self.ax}")
-      print("WHY")
       self.ax = 0
   
   def var_statement(self, node):
@@ -142,7 +138,7 @@ class Gen:
     self.statement(node.body)
     
     if node.step:
-      self.expression(node.step)
+      self.expression(node.step, output=False)
     
     self.emit(f"jmp {label_condition}")
     self.emit_label(label_end)

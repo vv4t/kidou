@@ -13,7 +13,7 @@ class ScopeParam:
     size = sizeof(var.data_type)
     align = min(size, 4)
     size = max(sizeof(var.data_type), align)
-    self.size = math.ceil(self.size / align) * align
+    self.size = (self.size + (align - 1)) // align * align
     var.pos = -8 - self.size - size
     self.size += size
     
@@ -43,7 +43,7 @@ class Scope:
     if not isfunction(var.data_type):
       size = var_sizeof(var.data_type)
       align = min(size, 4)
-      self.size = math.ceil(self.size / align) * align
+      self.size = (self.size + (align - 1)) // align * align
       var.pos = self.size
       self.size += size
     

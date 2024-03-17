@@ -1,14 +1,14 @@
+#define n 512
+
+int rand() syscall(5);
+
 void main()
 {
-  int n = 5;
+  int data[n];
   
-  int data[5];
-  
-  data[0] = 10;
-  data[1] = 1;
-  data[2] = 234;
-  data[3] = 5;
-  data[4] = 4;
+  for (int i = 0; i < n; i += 1) {
+    data[i] = rand();
+  }
   
   for (int i = 0; i < n; i += 1) {
     for (int j = 0; j < n - i - 1; j += 1) {
