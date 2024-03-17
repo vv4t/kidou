@@ -275,8 +275,27 @@ class Gen:
       self.call(node, output)
     elif isinstance(node, CastNode):
       self.cast(node, output)
+    elif isinstance(node, IncrementNode):
+      self.increment(node, output)
     else:
       raise Exception("unknown")
+  
+  def increment(self, node, output):
+    if output:
+      self.expression(node.base, output)
+    
+    self.expression(node.base, True)
+    
+    if isfloat(node.data_type):
+      self.emit("const 1.0")
+      self.emit("fadd")
+    else:
+      self.emit("const 1")
+      self.emit("add")
+    
+    self.lvalue(node.base, True)
+    self.emit("sw")
+    self.ax -= 2
   
   def cast(self, node, output):
     self.expression(node.base, output)

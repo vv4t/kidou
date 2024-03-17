@@ -17,14 +17,14 @@ void main()
   bob_arr[0].u = 0.0;
   bob_arr[0].u_t = 0.0;
   
-  for (int i = 0; i < 10; i += 1) {
+  for (int i = 0; i < 10; i++) {
     float theta = (float) i / 10.0 * M_PI;
     float h = 10.0;
     bob_arr[i + 1].u = h * sin(theta);
     bob_arr[i + 1].u_t = -h * sin(theta);
   }
   
-  for (int i = 0; i < 10; i += 1) {
+  for (int i = 0; i < 10; i++) {
     float theta = (float) i / 10.0 * M_PI;
     float h = 30.0;
     bob_arr[i + 40].u = h * sin(theta);
@@ -34,7 +34,7 @@ void main()
 
 void draw()
 {
-  for (int i = 1; i < NUM_BOB- 1; i += 1) {
+  for (int i = 1; i < NUM_BOB- 1; i++) {
     float du_dx_1 = bob_arr[i + 1].u - bob_arr[i].u;
     float du_dx_2 = bob_arr[i].u - bob_arr[i - 1].u;
     
@@ -43,11 +43,11 @@ void draw()
     bob_arr[i].u_t += d2u_dx2;
   }
   
-  for (int i = 0; i < NUM_BOB; i += 1) {
+  for (int i = 0; i < NUM_BOB; i++) {
     bob_arr[i].u += bob_arr[i].u_t;
   }
   
-  for (int i = 0; i < NUM_BOB; i += 1) {
+  for (int i = 0; i < NUM_BOB; i++) {
     circle(
       320 - NUM_BOB * 5 + i * 10,
       240 + (int) bob_arr[i].u,
@@ -55,7 +55,7 @@ void draw()
     );
   }
   
-  for (int i = 1; i < NUM_BOB; i += 1) {
+  for (int i = 1; i < NUM_BOB; i++) {
     line(
       320 - NUM_BOB * 5 + (i - 1) * 10,
       240 + (int) bob_arr[i - 1].u,

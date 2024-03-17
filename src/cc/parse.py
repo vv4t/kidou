@@ -358,8 +358,23 @@ class Parse:
       return self.dereference()
     elif self.lex.match("("):
       return self.cast()
+    elif self.lex.match('++'):
+      return self.pre_increment()
     else:
       return self.postfix()
+  
+  def pre_increment(self):
+    op = '+' if self.lex.accept('++') else '-' if self.lex.accept('--') else None
+    
+    if not op:
+      return None
+    
+    base = self.expect(self.unary(), "unary-expression")
+    
+    if isfloat(base.data_type):
+      return self.binop_check(base, '=', self.binop_check(base, op, ConstantNode(1.0, type_specifier("float"))))
+    else:
+      return self.binop_check(base, '=', self.binop_check(base, op, ConstantNode(1, type_specifier("int"))))
   
   def cast(self):
     if not self.lex.accept("("):
@@ -431,8 +446,21 @@ class Parse:
         base = self.access(base, True)
       elif self.lex.match('->'):
         base = self.access(base, False)
+      elif self.lex.match('++') or self.lex.match('--'):
+        base = self.increment(base)
       else:
         return base
+  
+  def increment(self, base):
+    op = self.lex.accept('++') or self.lex.accept('--')
+    
+    if not islvalue(base):
+      raise TokenError(op, f"cannot increment or decrement non-lvalue")
+    
+    if not isint(base.data_type) and not isfloat(base.data_type):
+      raise TokenError(op, f"cannot increment or decrement '{base.data_type}'")
+    
+    return IncrementNode(base, op)
   
   def access(self, base, direct):
     if direct:

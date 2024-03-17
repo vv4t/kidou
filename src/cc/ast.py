@@ -378,6 +378,15 @@ class UnaryNode:
   def __repr__(self):
     return f'{self.op}{self.base}'
 
+class IncrementNode:
+  def __init__(self, base, op):
+    self.base = base
+    self.op = op
+    self.data_type = base.data_type
+  
+  def __repr__(self):
+    return f'{self.base}{self.op}'
+
 class IndexNode:
   def __init__(self, base, pos, data_type):
     self.base = base
