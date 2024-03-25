@@ -6,8 +6,8 @@
 #define MAX_NAME 64
 #define MAX_EXPORT 32
 #define MAX_SYSCALL 16
-#define MAX_STACK 4096
-#define MAX_TEXT 4096
+#define MAX_STACK (1024*1024)
+#define MAX_TEXT (1024*1024)
 
 typedef enum {
   VM_CONST,
@@ -89,6 +89,8 @@ typedef struct vm_s {
   
   int text[MAX_TEXT];
   int stack[MAX_STACK];
+  
+  int status;
   
   bool debug;
 } vm_t;

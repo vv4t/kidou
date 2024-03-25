@@ -5,8 +5,8 @@ import sys
 import os
 
 try:
-  if len(sys.argv) < 2:
-    print(f"usage: {sys.argv[0]} <file> [--dump]")
+  if len(sys.argv) < 3:
+    print(f"usage: {sys.argv[0]} <file> <output> [--dump]")
     sys.exit(1)
   
   if not os.path.isfile(sys.argv[1]):
@@ -17,7 +17,7 @@ try:
   parse = Parse(lex)
   gen = Gen(parse)
   
-  f = open("a.out", "w")
+  f = open(sys.argv[2], "w")
   f.write(gen.text)
   f.close()
 except (LexError, TokenError) as e:

@@ -1,5 +1,5 @@
-#include "math.h"
-#include "sdl.h"
+#include "lib/math.h"
+#include "lib/sdl.h"
 
 #define NUM_BOB 64
 
@@ -17,18 +17,14 @@ void main()
   bob_arr[0].u = 0.0;
   bob_arr[0].u_t = 0.0;
   
-  for (int i = 0; i < 10; i++) {
-    float theta = (float) i / 10.0 * M_PI;
-    float h = 10.0;
-    bob_arr[i + 1].u = h * sin(theta);
-    bob_arr[i + 1].u_t = -h * sin(theta);
+  for (int i = 0; i <= 5; i++) {
+    bob_arr[i + 1].u = 10.0;
+    bob_arr[i + 1].u_t = 10.0;
   }
   
-  for (int i = 0; i < 10; i++) {
-    float theta = (float) i / 10.0 * M_PI;
-    float h = 30.0;
-    bob_arr[i + 40].u = h * sin(theta);
-    bob_arr[i + 40].u_t = -h * sin(theta);
+  for (int i = 0; i <= 5; i++) {
+    bob_arr[i + 30].u = 10.0;
+    bob_arr[i + 30].u_t = 10.0;
   }
 }
 

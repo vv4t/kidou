@@ -1,0 +1,8 @@
+#!/bin/sh
+
+if [ "$#" -lt 2 ]; then
+  echo "usage: $0 <file> <output> [--dump]"
+  exit 1
+fi
+
+python "$(dirname "$0")"/src/cc/cc.py $@

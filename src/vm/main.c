@@ -1,3 +1,4 @@
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -19,17 +20,26 @@ void rand_f(vm_t *vm)
 
 int main(int argc, char *argv[])
 {
+  if (argc < 2) {
+    fprintf(stderr, "usage: %s <file> [--debug]\n", argv[0]);
+    exit(1);
+  }
+  
   srand(time(NULL));
   
   static vm_t vm;
   vm_init(&vm);
+  
+  if (argc > 2 && strcmp(argv[2], "--debug") == 0) {
+    vm.debug = true;
+  }
   
   sdl_init(&vm);
   
   vm_syscall_bind(&vm, 1, sdl_f);
   vm_syscall_bind(&vm, 6, rand_f);
   
-  if (!vm_file(&vm, "a.out")) {
+  if (!vm_file(&vm, argv[1])) {
     return 1;
   }
    

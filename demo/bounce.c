@@ -1,5 +1,5 @@
-#include "sdl.h"
-#include "math.h"
+#include "lib/sdl.h"
+#include "lib/math.h"
 
 int x_c;
 int y_c;

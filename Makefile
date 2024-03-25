@@ -1,13 +1,6 @@
-.PHONY=SDL default debug autotest
-SHELL=/bin/bash
+.PHONY=default
 
-default: bin/vm
+default: kidou-vm
 
-bin/vm: src/vm/*.c
-	gcc src/vm/*.c -lm -lSDL2 -o bin/vm
-
-autotest:
-	source kidou && kidou test/bubble_sort.c
-	source kidou && kidou test/fib.c
-	source kidou && kidou test/sieve.c
-	source kidou && kidou test/vec2.c
+kidou-vm: src/vm/*.c
+	gcc src/vm/*.c -lm -lSDL2 -o kidou-vm

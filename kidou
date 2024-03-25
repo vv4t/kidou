@@ -1,21 +1,18 @@
 #!/bin/bash
 
-kidou_dir="$(pwd)"
+if [ "$#" -lt 1 ]; then
+  echo "usage: $0 <file> [--debug]"
+  exit 1
+fi
 
-function kidou()
-{
-  if [ "$#" -ne 1 ]; then
-    echo "usage: kidou <file>"
-    return
-  fi
+out=$(mktemp)
 
-  python "$kidou_dir/src/cc/cc.py" $@
-
-  if [ $? -eq 0 ]; then
-    "$kidou_dir/bin/vm"
-  fi
-  
-  if [ -f a.out ]; then
-    rm a.out
-  fi
-}
+if [ "$2" = "--debug" ]; then
+  kidou-cc "$1" "$out" --dump
+  kidou-vm "$out" --debug
+  rm "$out"
+else
+  kidou-cc "$1" "$out"
+  kidou-vm "$out"
+  rm "$out"
+fi

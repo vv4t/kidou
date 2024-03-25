@@ -103,9 +103,9 @@ void circle_f(vm_t *vm)
   int y = vm_arg_int(vm);
   int r = vm_arg_int(vm);
   
-  float d_deg = 2.0 * M_PI * 0.1;
+  float d_deg = 2.0 * M_PI * (1.0 / 32.0);
   
-  for (float i = 0.0; i < 10.0; i += 1.0) {
+  for (float i = 0.0; i < 32.0; i += 1.0) {
     int x0 = x + (int) (cos(i * d_deg) * (float) r);
     int y0 = y + (int) (sin(i * d_deg) * (float) r);
     
